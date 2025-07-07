@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import { useRef } from "react";
 
 function polarToCartesian(centerX, centerY, radius, angle) {
   return {
