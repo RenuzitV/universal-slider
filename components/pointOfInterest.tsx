@@ -10,6 +10,8 @@ export default interface PointOfInterest {
   imageUrl: string;
 }
 
+const isDev = process.env.NODE_ENV == "development";
+
 export function CreatePOI({ earth, poi }: { earth: SolarBodyConfig | undefined, poi: PointOfInterest }) {
   const [showing, setShowing] = useState(false);
   let x: number | null = null
@@ -33,7 +35,13 @@ export function CreatePOI({ earth, poi }: { earth: SolarBodyConfig | undefined, 
     <g
       key={poi.id}
       onMouseEnter={() => setShowing(true)}
-      // onMouseLeave={() => setShowing(false)}
+      onMouseLeave={() => {
+        if (isDev){
+          return
+        }
+
+        setShowing(false)
+      }}
     >
       <circle
         cx={x!}
