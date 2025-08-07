@@ -20,9 +20,9 @@ async function fetchEphemerisJson(): Promise<EphemerisPoint[]> {
   const stop = now.toISOString().slice(0, 10);
 
   // Use the GET API for text format
-  const url = URL.parse(`https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='399'&MAKE_EPHEM='YES'&EPHEM_TYPE='VECTORS'&CENTER='@10'&START_TIME='${start}'&STOP_TIME='${stop}'&STEP_SIZE='1%20DAYS'&VEC_TABLE='1'&REF_SYSTEM='ICRF'&CAL_TYPE='M'&OUT_UNITS='KM-S'`);
+  const urlString: string = `https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='399'&MAKE_EPHEM='YES'&EPHEM_TYPE='VECTORS'&CENTER='@10'&START_TIME='${start}'&STOP_TIME='${stop}'&STEP_SIZE='1%20DAYS'&VEC_TABLE='1'&REF_SYSTEM='ICRF'&CAL_TYPE='M'&OUT_UNITS='KM-S'`;
 
-  const resp = await fetch(url!.toString());
+  const resp = await fetch(urlString);
   const text = await resp.text();
 
   // Parse block between $$SOE and $$EOE
