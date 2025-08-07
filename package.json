@@ -3,7 +3,8 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "next dev",
+        "dev": "GLOBAL_AGENT_HTTPS_PROXY=http://127.0.0.1:3128 GLOBAL_AGENT_HTTP_PROXY=http://127.0.0.1:3128 node -r global-agent/bootstrap node_modules/next/dist/bin/next dev",
+        "dev-noproxy": "next dev",
         "build": "next build",
         "start": "next start",
         "lint": "next lint"
@@ -14,15 +15,19 @@
         "bright": "^0.8.5",
         "markdown-to-jsx": "^7.4.5",
         "next": "15.3.5",
+        "node-fetch": "^3.3.2",
         "react": "18.3.1",
         "react-dom": "18.3.1",
         "unique-names-generator": "^4.7.1"
     },
     "devDependencies": {
         "@tailwindcss/postcss": "^4.0.15",
+        "@types/node": "24.0.10",
+        "@types/react": "19.1.8",
         "eslint": "8.57.1",
         "eslint-config-next": "15.3.5",
         "postcss": "^8.4.36",
-        "tailwindcss": "^4.0.15"
+        "tailwindcss": "^4.0.15",
+        "global-agent": "^3.0.0"
     }
 }
