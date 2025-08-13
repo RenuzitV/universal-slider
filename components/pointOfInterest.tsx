@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import styles from "../styles/solar-system.module.css";
 import { SolarBodyConfig } from "./solarBodies";
 
-export default interface PointOfInterest {
+export interface PointOfInterest {
   id: string;
   date: Date;
   title: string;
@@ -73,6 +73,13 @@ export function CreatePOI({ earth, poi }: { earth: SolarBodyConfig | undefined, 
 
 // Sample hardcoded POIs
 export const defaultPOIs: PointOfInterest[] = [
+  {
+    id: "poi0",
+    date: new Date("2025-01-20"),
+    title: "First Date",
+    description: "Our magical first time together.",
+    imageUrl: "/images/poi0.jpg",
+  },
   {
     id: "poi1",
     date: new Date("2025-01-20"),
