@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { dayKey } from "./dateKeys";
 import styles from "../styles/solar-system.module.css";
 import type { SolarBodyConfig } from "./SolarBodies";
-import { PointOfInterest } from "./PointOfInterest";
+import { PointOfInterest } from "./pointOfInterest";
 
 type OrbitPoint = { x: number; y: number; date: string | Date; radial?: number };
 

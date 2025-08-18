@@ -1,5 +1,5 @@
 // src/components/poiData.ts
-import { PointOfInterest } from "./PointOfInterest";
+import { PointOfInterest } from "./pointOfInterest";
 
 // Stable sort by Date ascending (oldest → newest)
 export function sortPOIs<T extends { date: Date | string }>(list: T[]): T[] {

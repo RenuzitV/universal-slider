@@ -1,7 +1,7 @@
 // src/components/SolarSystem.tsx
 import React, { useRef, useEffect, useState, useMemo } from "react";
 import { DefaultSolarBodies, SolarBodyConfig, Sun } from "./SolarBodies";
-import { defaultPOIs } from "./PointOfInterest";
+import { defaultPOIs } from "./pointOfInterest";
 import { EphemerisPoint } from "../pages/api/earth-orbit";
 import { CreateSun } from "./Sun";
 import { POILayer } from "./POILayer";
