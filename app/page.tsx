@@ -1,7 +1,6 @@
 'use client';
 
-import dynamic from "next/dynamic";
-const SolarSystem = dynamic(() => import("../components/SolarSystem"), { ssr: false });
+import SolarSystem from "../components/SolarSystem";
 
 export default function Home() {
   return (
