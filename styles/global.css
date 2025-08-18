@@ -4,3 +4,7 @@ html,
 body {
     overscroll-behavior-x: none;
 }
+
+main{
+    max-height: 100vh;
+}

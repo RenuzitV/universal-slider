@@ -27,15 +27,6 @@
   /* appears 200px above the anchor point due to y offset */
 }
 
-/* solar-system.module.css additions */
-.poi {
-  fill: rgba(230, 122, 255, 1);
-  stroke: rgba(255, 255, 255, 0.8);
-  transition: r 300ms ease, stroke-width 200ms ease;
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-
 .appColumn {
   display: flex;
   flex-direction: column;
@@ -106,4 +97,45 @@
   width: 100%;
   border-radius: 8px;
   margin-top: 6px;
+}
+
+/* ===== Earth motion ===== */
+.planetWrap {
+  transition: transform 420ms cubic-bezier(.2,.7,0,1);
+  will-change: transform;
+}
+.earthDot {
+  fill: #58a6ff;
+}
+.earthGlow {
+  fill: none;
+  stroke: rgba(88,166,255,0.4);
+  stroke-width: 6;
+  filter: drop-shadow(0 0 6px rgba(88,166,255,0.6));
+}
+
+/* ===== POIs ===== */
+/* POI fill & stroke stay the same; we animate `r` via inline style */
+.poi {
+  fill: rgba(230, 122, 255, 1);
+  stroke: rgba(230, 122, 255, 0.35);
+}
+
+/* dashed ring spins for selected POI */
+.rotating {
+  transform-origin: center;
+  animation: poiDashSpin 2.2s linear infinite;
+}
+@keyframes poiDashSpin {
+  to { stroke-dashoffset: -64; }
+}
+
+/* (optional) subtle popup fade-in */
+.popup {
+  will-change: transform, opacity;
+  animation: poiPopupIn 160ms ease-out;
+}
+@keyframes poiPopupIn {
+  from { transform: translateY(-4px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
 }

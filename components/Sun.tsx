@@ -1,4 +1,4 @@
-import { SolarBodyConfig } from "./solarBodies";
+import { SolarBodyConfig } from "./SolarBodies";
 import styles from "../styles/solar-system.module.css";
 
 export function CreateSun({ x: centerX, y: centerY, sun }: { x: number, y: number, sun: SolarBodyConfig }) {

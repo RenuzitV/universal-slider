@@ -133,6 +133,7 @@
   font-size: 16px;
   background: rgba(230, 122, 255, 0.18);
 }
+
 /* Year progress rail */
 .yearBarWrap {
   display: grid;
@@ -140,47 +141,101 @@
   align-items: center;
   gap: 8px;
 }
+
 .yearTrackArea {
   position: relative;
   height: 100%;
   display: grid;
   place-items: center;
 }
+
 .yearTrack {
-  position: absolute; left: 0; right: 0; height: 4px;
-  background: linear-gradient(to right, rgba(255,255,255,0.2), rgba(255,255,255,0.25));
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.25));
   border-radius: 999px;
 }
+
 .yearTick {
-  position: absolute; top: 50%;
-  width: 1px; height: 12px;
-  background: rgba(255,255,255,0.35);
+  position: absolute;
+  top: 50%;
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.35);
   transform: translateY(-50%);
 }
+
 .yearThumb {
-  position: absolute; top: 50%;
-  width: 10px; height: 10px; border-radius: 999px;
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
   background: #fff;
   transform: translate(-50%, -50%);
   transition: left 220ms ease;
-  box-shadow: 0 0 0 4px rgba(255,255,255,0.2);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2);
 }
+
 .yearCenterChip {
-  position: absolute; left: 50%; top: 50%;
+  position: absolute;
+  left: 50%;
+  top: 50%;
   transform: translate(-50%, -50%);
-  padding: 6px 12px; border-radius: 12px;
-  background: rgba(255,255,255,0.08);
-  display: grid; place-items: center; gap: 2px;
-  pointer-events: none; /* purely informational */
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  pointer-events: none;
+  /* purely informational */
 }
-.yearLabel { font-weight: 700; }
-.yearSub { font-size: 12px; opacity: 0.8; }
+
+.yearLabel {
+  font-weight: 700;
+}
+
+.yearSub {
+  font-size: 12px;
+  opacity: 0.8;
+}
 
 /* shows near year end; a little dashed gate just right of center */
 .yearCutoff {
-  position: absolute; top: 50%; height: 20px; width: 8px;
-  border-right: 2px dashed rgba(230,122,255,0.9);
-  transform: translate(calc(50% + 42px), -50%); /* sit to the right of chip */
+  position: absolute;
+  top: 50%;
+  height: 20px;
+  width: 8px;
+  border-right: 2px dashed rgba(230, 122, 255, 0.9);
+  transform: translate(calc(50% + 42px), -50%);
+  /* sit to the right of chip */
   transition: opacity 180ms ease;
   pointer-events: none;
+}
+
+.itemActive {
+  animation: dayChipPop 160ms ease-out;
+  transform-origin: center;
+}
+
+@keyframes dayChipPop {
+  0% {
+    transform: scale(0.94);
+  }
+
+  60% {
+    transform: scale(1.04);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* optional: make active-with-POI feel a bit brighter */
+.itemActiveHas {
+  box-shadow: 0 0 0 2px rgba(230, 122, 255, 0.35) inset;
 }

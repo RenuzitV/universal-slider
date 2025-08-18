@@ -1,27 +1,34 @@
 // src/components/SolarSystem.tsx
 import React, { useRef, useEffect, useState, useMemo } from "react";
-import { CreateSolarBodies, DefaultSolarBodies, SolarBodyConfig, Sun } from "./solarBodies";
-import { defaultPOIs } from "./pointOfInterest";
+import { DefaultSolarBodies, SolarBodyConfig, Sun } from "./SolarBodies";
+import { defaultPOIs } from "./PointOfInterest";
 import { EphemerisPoint } from "../pages/api/earth-orbit";
 import { CreateSun } from "./Sun";
 import { POILayer } from "./POILayer";
-import { dayKey } from "./dateKeys";
 import styles from "../styles/solar-system.module.css";
-import YearRailButtons from "./YearRailButtons";
-import DayRailButtons from "./DayRailButtons";
-import { fromDayKeySafe } from "./dateRange";
+import DayRailButtons, { DayRailHandle } from "./DayRailButtons";
 import YearProgressRail from "./YearProgressRail";
+import OrbitPath from "./OrbitPath";
+import EarthMarker from "./EarthMarker";
+import { sortPOIs } from "./poiData";
 
 const MAX_COORD = 1000;
 
+// helpers
+const toDayKeyLocal = (d: Date) =>
+  `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const fromDayKeyLocal = (key: string, year: number) => {
+  const [m, d] = key.split("-").map(Number);
+  return new Date(year, m - 1, d); // local midnight
+};
 
 export default function SolarSystem() {
   const width = useWindowWidth();
   const aspect = 20 / 10;
   const height = width / aspect;
-  const centerX = width / 2;
-  const centerY = height / 2;
 
+  // fetch orbits once, then scale/annotate
   const [rawBodies] = useState<SolarBodyConfig[]>(DefaultSolarBodies);
   const [fetchedBodies, setFetchedBodies] = useState<SolarBodyConfig[]>([]);
   const [earth, setEarth] = useState<SolarBodyConfig | null>(
@@ -33,7 +40,7 @@ export default function SolarSystem() {
     if (hasFetched.current) return;
     hasFetched.current = true;
 
-    const fetchOrbits = async () => {
+    (async () => {
       try {
         const fetched = await Promise.all(
           rawBodies.map(async (body: SolarBodyConfig) => {
@@ -43,111 +50,196 @@ export default function SolarSystem() {
             return { ...body, orbitTrajectory: orbitPoints };
           })
         );
-
-        // scale + annotate radial
-        const [scaled] = rescaleOrbits(fetched, width, height);
-
+        const [scaled] = rescaleOrbits(fetched);
         setFetchedBodies(scaled);
         setEarth(scaled.find(b => b.name === "Earth")!);
       } catch (err) {
         console.error("Failed to fetch orbits:", err);
       }
-    };
+    })();
+  }, [rawBodies]);
 
-    fetchOrbits();
-  }, [rawBodies, width, height]);
+  // POIs (sorted)
+  const pois = useMemo(() => sortPOIs(defaultPOIs), []);
+  const idToIndex = useMemo(() => {
+    const m = new Map<string, number>();
+    pois.forEach((p, i) => m.set(p.id, i));
+    return m;
+  }, [pois]);
 
-  const allYears = useMemo(() => {
-    const ys = new Set<number>();
-    defaultPOIs.forEach(p => ys.add(p.date.getFullYear()));
-    const minY = Math.min(...Array.from(ys));
-    const maxY = Math.max(...Array.from(ys));
-    return { minY, maxY };
-  }, []);
+  // selection state
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [poiCursor, setPoiCursor] = useState<number | null>(null);
 
-  // All years present in data (sorted)
-  const years = useMemo(() => {
-    const ys = new Set<number>();
-    defaultPOIs.forEach(p => ys.add(p.date.getFullYear()));
-    return Array.from(ys).sort((a, b) => a - b);
-  }, []);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date()); // use today as start
-
-  // derive current year + dayKey
   const currentYear = selectedDate.getFullYear();
-  const currentDayKey = useMemo(() => {
-    const m = String(selectedDate.getMonth() + 1).padStart(2, "0");
-    const d = String(selectedDate.getDate()).padStart(2, "0");
-    return `${m}-${d}`;
-  }, [selectedDate]);
+  const currentDayKey = toDayKeyLocal(selectedDate);
+  const selectedPoiId = poiCursor != null ? pois[poiCursor].id : null;
 
+  // years & 1-year padding
+  const yearsWithPOIs = useMemo(() => {
+    const s = new Set<number>();
+    pois.forEach(p => s.add(p.date.getFullYear()));
+    return Array.from(s).sort((a, b) => a - b);
+  }, [pois]);
+  const minYear = yearsWithPOIs[0] ?? new Date().getFullYear();
+  const maxYear = yearsWithPOIs[yearsWithPOIs.length - 1] ?? minYear;
+  const navMinYear = minYear - 1;
+  const navMaxYear = maxYear + 1;
 
-  const setDayKey = (k: string) => setSelectedDate(fromDayKeySafe(k, currentYear));
-  const bumpYear = (delta: number) => {
-    const y = currentYear + delta;
-    setSelectedDate(fromDayKeySafe(currentDayKey, y));
+  // day rail ref (for programmatic animation)
+  const dayRailRef = useRef<DayRailHandle>(null);
+
+  // jump to a specific POI (date + cursor + animate rail)
+  const jumpToPoi = (idx: number) => {
+    if (idx < 0 || idx >= pois.length) return;
+    const k = toDayKeyLocal(pois[idx].date);
+
+    // update date (rails/Earth), cursor (selection), and animate the rail
+    setSelectedDate(pois[idx].date);
+    setPoiCursor(idx);
+    dayRailRef.current?.animateToKey(k, { silent: true });
   };
 
-  // Day keys that have POIs in the selected year (for highlighting the day rail)
-  const poiDayKeysForYear = useMemo(() => {
-    const s = new Set<string>();
-    defaultPOIs
-      .filter(p => p.date.getFullYear() === currentYear) // ← was selectedYear
-      .forEach(p => s.add(dayKey(p.date)));
-    return s;
-  }, [currentYear]);
+  // next/prev POI relative to selected day + current cursor (tie-break on same day)
+  const nextPoi = () => {
+    const i = pois.findIndex(
+      p =>
+        p.date.getTime() > selectedDate.getTime() ||
+        (p.date.getTime() === selectedDate.getTime() && poiCursor != null && pois.indexOf(p) > poiCursor)
+    );
+    jumpToPoi(i); // no-op if i === -1
+  };
 
+  const prevPoi = () => {
+    // use findLastIndex (Node/modern browsers); if needed, replace with a reverse loop
+    // @ts-ignore
+    const i = pois.findLastIndex(
+      (p: typeof pois[number]) =>
+        p.date.getTime() < selectedDate.getTime() ||
+        (p.date.getTime() === selectedDate.getTime() && poiCursor != null && pois.indexOf(p) < poiCursor)
+    );
+    if (i >= 0) jumpToPoi(i);
+  };
+
+  // day rail: pending year delta (for Dec↔Jan wrap)
+  const pendingYearDeltaRef = useRef(0);
+  const bumpYear = (delta: number) => {
+    pendingYearDeltaRef.current += delta;
+  };
+
+  // set day from rail
+  const setDayKey = (k: string) => {
+    const y = selectedDate.getFullYear() + pendingYearDeltaRef.current;
+    pendingYearDeltaRef.current = 0;
+    const d = fromDayKeyLocal(k, y);
+    setSelectedDate(d);
+
+    // if there is a POI on that day/year, pick the first one; else clear selection
+    const sameDayIdx = pois.findIndex(
+      p => p.date.getFullYear() === y && toDayKeyLocal(p.date) === k
+    );
+    setPoiCursor(sameDayIdx >= 0 ? sameDayIdx : null);
+  };
+
+  // year stepper with ±1 padding; pick extreme POI in that year if available
+  const changeYearStep = (dir: 1 | -1) => {
+    const targetYear = Math.max(navMinYear, Math.min(navMaxYear, currentYear + dir));
+    if (targetYear === currentYear) return;
+
+    const k = currentDayKey;
+    const d = fromDayKeyLocal(k, targetYear);
+    setSelectedDate(d);
+
+    const firstInY = pois.findIndex(p => p.date.getFullYear() === targetYear);
+    let lastInY = -1;
+    for (let i = pois.length - 1; i >= 0; i--) {
+      if (pois[i].date.getFullYear() === targetYear) { lastInY = i; break; }
+    }
+    const pick = dir > 0 ? lastInY : firstInY;
+    if (pick >= 0) {
+      jumpToPoi(pick); // will animate the rail and set cursor
+    } else {
+      // empty year: keep cursor null, animate rail to same MM-DD in that year
+      dayRailRef.current?.animateToKey(k, { silent: true });
+      setPoiCursor(null);
+    }
+  };
+
+  // day-rail dots for current year
+  const hasPOIKeys = useMemo(() => {
+    const s = new Set<string>();
+    pois
+      .filter(p => p.date.getFullYear() === currentYear)
+      .forEach(p => s.add(toDayKeyLocal(p.date)));
+    return s;
+  }, [pois, currentYear]);
+
+  // earth body (prefer fetched)
+  const earthBody: SolarBodyConfig | null =
+    (fetchedBodies.find(b => b.name === "Earth") as SolarBodyConfig | undefined) ?? earth ?? null;
 
   return (
     <div className={styles.appColumn}>
-      {/* Year progress over full range with ±1 padding implicitly */}
       <div className={styles.topBar}>
         <YearProgressRail
           selectedDate={selectedDate}
-          minYear={allYears.minY}
-          maxYear={allYears.maxY}
-          onPrevYear={() => bumpYear(-1)}
-          onNextYear={() => bumpYear(+1)}
-          width={720}
+          minYear={minYear}
+          maxYear={maxYear}
+          onPrevYear={() => changeYearStep(-1)}
+          onNextYear={() => changeYearStep(+1)}
           height={54}
         />
       </div>
 
-      {/* Day rail (month-day ring). Crossing Dec31/Jan1 bumps year. */}
       <div className={styles.topBar}>
         <DayRailButtons
+          ref={dayRailRef}
           valueKey={currentDayKey}
           onChange={setDayKey}
-          hasPOIKeys={poiDayKeysForYear}
-          itemWidth={76}
+          hasPOIKeys={hasPOIKeys}
           height={56}
           visibleCount={9}
-          onYearBoundary={bumpYear}     // << new
+          extraPad={8}        // keep the extra padding
+          minItemWidth={76}   // allow overflow instead of shrinking
+          onYearBoundary={bumpYear}
+          onPrevPoi={prevPoi}
+          onNextPoi={nextPoi}
         />
       </div>
 
       <div className={styles.canvasWrap}>
-        <div className={styles.canvasWrap}>
-          <svg
-            width={width}
-            height={height}
-            className={styles.solarSystem}
-            viewBox={`${-MAX_COORD} ${-MAX_COORD} ${MAX_COORD * 2} ${MAX_COORD * 2}`}
-            preserveAspectRatio="xMidYMid meet"
-          >
-            {/* viewBox is centered at (0,0) → place the Sun at (0,0) */}
-            <CreateSun x={0} y={0} sun={Sun} />
-            <CreateSolarBodies bodies={fetchedBodies} />
-            {earth && earth.orbitTrajectory && (
+        <svg
+          width={width}
+          height={height}
+          className={styles.solarSystem}
+          viewBox={`${-MAX_COORD} ${-MAX_COORD} ${MAX_COORD * 2} ${MAX_COORD * 2}`}
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <CreateSun x={0} y={0} sun={Sun} />
+
+          {earthBody?.orbitTrajectory?.length ? (
+            <>
+              <OrbitPath earth={earthBody} />
+              <EarthMarker earth={earthBody} dayKey={currentDayKey} />
               <POILayer
-                earth={earth}
-                pois={defaultPOIs}
+                earth={earthBody}
+                pois={pois}
                 currentYear={currentYear}
                 selectedDayKey={currentDayKey}
+                selectedPoiId={selectedPoiId}
+                onSelectPoi={(id) => {
+                  if (id == null) {
+                    // clear selection
+                    setPoiCursor(null);
+                    return;
+                  }
+                  const i = idToIndex.get(id);
+                  if (i != null) jumpToPoi(i);
+                }}
               />
-            )}
-          </svg>
-        </div>
+            </>
+          ) : null}
+        </svg>
       </div>
     </div>
   );
@@ -156,20 +248,15 @@ export default function SolarSystem() {
 function useWindowWidth() {
   const [width, setWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 1600);
   useEffect(() => {
-    function handleResize() { setWidth(window.innerWidth); }
+    const handleResize = () => setWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
   return width;
 }
 
-function rescaleOrbits(
-  bodies: SolarBodyConfig[],
-  width: number,
-  height: number,
-): [SolarBodyConfig[], number] {
+function rescaleOrbits(bodies: SolarBodyConfig[]): [SolarBodyConfig[], number] {
   const allDistances: number[] = [];
-
   bodies.forEach(body => {
     const points = body.orbitTrajectory as (EphemerisPoint & { radial?: number })[] | undefined;
     if (points?.length) {
@@ -189,13 +276,12 @@ function rescaleOrbits(
     const points = body.orbitTrajectory as (EphemerisPoint & { radial?: number })[] | undefined;
     if (!points) return;
     points.forEach(pt => {
-      pt.x = pt.x * scale;
-      pt.y = pt.y * scale;
+      pt.x *= scale;
+      pt.y *= scale;
     });
-    // annotate a radial angle once (outward normal direction)
     points.forEach(pt => {
       pt.radial = Math.atan2(pt.y, pt.x);
-      // ensure pt.date is a Date if your API returns ISO strings:
+      // normalize date if API returns strings
       // @ts-ignore
       if (pt.date && typeof pt.date === "string") pt.date = new Date(pt.date);
     });
