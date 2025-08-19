@@ -11,10 +11,7 @@
 /* Flex wrapper for centering inside foreignObject */
 .popupContainer {
   position: relative;
-  width: 0;
-  height: 0;
   pointer-events: none;
-  transform: translate(0, -14vw);
   /* the popup itself will be clickable if you change FO later */
 }
 
@@ -22,6 +19,7 @@
   position: absolute;
   left: 0;
   top: 0;
+  transform: translate(2%, -110%);
 }
 
 /* :root {
