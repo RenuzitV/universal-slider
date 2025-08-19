@@ -1,3 +1,85 @@
+/* Root: sits inside .topBar (which already has a fixed height) */
+.railRoot {
+  width: 100%;
+  height: 100%;
+  display: flex;                 /* ← flex instead of grid */
+  align-items: center;
+  gap: 0.6vw;                    /* space between prev/next and viewport */
+  overflow: hidden;              /* make sure content can't escape */
+}
+
+/* Optional prev/next buttons on the sides */
+.railCtrl {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.0vw;
+  height: 2.0vw;
+  border-radius: 9999px;
+  user-select: none;
+  cursor: pointer;
+}
+
+/* Viewport that masks the sliding track */
+.railViewport {
+  position: relative;
+  flex: 1 1 auto;
+  height: 100%;
+  overflow: hidden;              /* mask the track */
+}
+
+/* Center guide (if you show a center highlight) */
+.railCenterGuide {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px dashed rgba(255,255,255,.15); /* optional */
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* The sliding track: now a flex row */
+.railTrack {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  display: flex;                 /* ← important */
+  align-items: center;
+  gap: 0.6vw;                    /* spacing between items */
+  will-change: transform;
+  transition: transform 280ms cubic-bezier(.2,.7,0,1);
+}
+
+/* Each chip/button item */
+.railItem {
+  flex: 0 0 auto;
+  min-width: 2.97vw;            /* ~76px at 2560w; you can keep your inline width too */
+  height: 70%;                  /* fit the bar nicely */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 .6vw;
+  border-radius: 9999px;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+}
+
+/* Active state */
+.railItemActive {
+  box-shadow: 0 0 0 2px rgba(230,122,255,.35) inset;
+  animation: dayChipPop 160ms ease-out;
+}
+@keyframes dayChipPop {
+  0% { transform: scale(.94); }
+  60% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
 .railButtonsBar .label {
   font-size: 13px;
 }
@@ -213,6 +295,47 @@
   transform: translate(calc(50% + 42px), -50%);
   /* sit to the right of chip */
   transition: opacity 180ms ease;
+  pointer-events: none;
+}
+
+/* day chip button */
+.item {
+  position: relative;          /* for the absolute dot */
+  flex: 0 0 auto;
+  display: flex;               /* ← flex button */
+  align-items: center;
+  justify-content: center;     /* center the inner wrapper */
+  padding: 0 .6vw;
+  border-radius: 9999px;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 0;
+  background: transparent;     /* or your chip bg */
+  color: inherit;
+}
+
+/* inner wrapper ensures text stays centered no matter what */
+.itemCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;                 /* span full chip */
+  pointer-events: none;        /* clicks handled by the button */
+}
+
+/* your existing label size is fine; keep it */
+.label { text-align: center; }
+
+/* POI dot no longer affects centering */
+.dot {
+  position: absolute;
+  right: 0.35vw;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0.31vw;
+  height: 0.31vw;
+  border-radius: 50%;
+  background: #e67aff;
   pointer-events: none;
 }
 

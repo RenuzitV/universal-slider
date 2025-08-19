@@ -3,13 +3,15 @@ import React, { useMemo, useRef, useEffect, useState } from "react";
 import styles from "../styles/day-rail.module.css";
 import { startOfYear, endOfYear, daysInYear, dayOfYear } from "./dateRange";
 
+type CSSHeight = number | string; // NEW
+
 export default function YearProgressRail({
   selectedDate,
   minYear,
   maxYear,
   onPrevYear,
   onNextYear,
-  height = 54,
+  height,                       // ← string | number
   thresholdDays = 20,
 }: {
   selectedDate: Date;
@@ -17,9 +19,10 @@ export default function YearProgressRail({
   maxYear: number;
   onPrevYear?: () => void;
   onNextYear?: () => void;
-  height?: number;
+  height?: CSSHeight;
   thresholdDays?: number;
 }) {
+  const effectiveHeight = height ?? "100%"; // NEW
   const padStart = minYear - 1, padEnd = maxYear + 1;
 
   const areaRef = useRef<HTMLDivElement>(null);
@@ -59,7 +62,7 @@ export default function YearProgressRail({
   const thumbX = Math.round(progress * width);
 
   return (
-    <div className={styles.yearBarWrap} style={{ height, width: "100%" }}>
+    <div className={styles.yearBarWrap} style={{ height: effectiveHeight, width: "100%" }}>
       <div className={styles.btnGroup}>
         <button className={styles.ctrlBtn} onClick={onPrevYear} aria-label="Previous year">‹</button>
       </div>

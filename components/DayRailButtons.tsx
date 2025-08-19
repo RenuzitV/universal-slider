@@ -12,20 +12,19 @@ export type DayRailHandle = {
   animateToKey: (key: string, opts?: { silent?: boolean }) => void;
 };
 
+type CSSHeight = number | string; // NEW
+
 type Props = {
-  valueKey: string;                          // "MM-DD"
+  valueKey: string;
   onChange: (key: string) => void;
   hasPOIKeys?: Set<string>;
-  height?: number;
-  visibleCount?: number;                     // odd (e.g. 9)
+  height?: CSSHeight;              // ← string | number
+  visibleCount?: number;
   onYearBoundary?: (deltaYear: number) => void;
   onPrevPoi?: () => void;
   onNextPoi?: () => void;
-
-  // NEW: extra offscreen padding (more items left/right). Default 6.
   extraPad?: number;
-  // NEW: don't shrink chips below this; the strip will overflow if needed.
-  minItemWidth?: number;                     // px, default 76
+  minItemWidth?: number;
 };
 
 const DayRailButtons = forwardRef<DayRailHandle, Props>(function DayRailButtons(
@@ -33,27 +32,27 @@ const DayRailButtons = forwardRef<DayRailHandle, Props>(function DayRailButtons(
     valueKey,
     onChange,
     hasPOIKeys,
-    height = 56,
+    height,                    // ← parent controls height (e.g., "100%")
     visibleCount = 9,
     onYearBoundary,
     onPrevPoi,
     onNextPoi,
-    extraPad = 6,              // more padding than before
+    extraPad = 6,
     minItemWidth = 76,
   },
   ref
 ) {
+  const effectiveHeight = height ?? "100%"; // NEW
+
   const period = DAY_KEYS.length;
   const propIndex = Math.max(0, DAY_KEYS.indexOf(valueKey));
 
-  // animation-only state
   const [animating, setAnimating] = useState(false);
   const [tx, setTx] = useState(0);
   const [internalCenterIdx, setInternalCenterIdx] = useState<number | null>(null);
 
   const renderCenter = internalCenterIdx ?? propIndex;
 
-  // measure container
   const wrapRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(0);
   const lastW = useRef(0);
@@ -74,10 +73,9 @@ const DayRailButtons = forwardRef<DayRailHandle, Props>(function DayRailButtons(
   }, []);
 
   const windowHalf = Math.floor(visibleCount / 2);
-  const sliceHalf = windowHalf + extraPad
+  const sliceHalf = windowHalf + extraPad;
   const itemCount = 2 * sliceHalf + 1;
 
-  // allow overflow instead of shrinking below min width
   const rawItemWidth = containerW > 0 ? containerW / itemCount : minItemWidth;
   const itemWidth = Math.max(rawItemWidth, minItemWidth);
   const stripPixelWidth = itemCount * itemWidth;
@@ -104,8 +102,6 @@ const DayRailButtons = forwardRef<DayRailHandle, Props>(function DayRailButtons(
     const baseCenter = renderCenter;
     const targetIdx = modulo(baseCenter + totalSteps, period);
     const yearDelta = computeYearDelta(baseCenter, totalSteps);
-
-    // cap the visual move
     const animSteps = Math.min(abs, windowHalf);
 
     const commit = (idx: number) => {
@@ -142,11 +138,10 @@ const DayRailButtons = forwardRef<DayRailHandle, Props>(function DayRailButtons(
     const target = DAY_KEYS.indexOf(key);
     if (target < 0 || target === renderCenter) return;
     let delta = target - renderCenter;
-    delta = ((delta + period / 2) % period) - period / 2; // shortest signed
+    delta = ((delta + period / 2) % period) - period / 2;
     slideBySteps(delta);
   };
 
-  // expose programmatic animation for parent (e.g., next/prev POI)
   useImperativeHandle(ref, () => ({
     animateToKey: (key: string, opts?: { silent?: boolean }) => {
       const target = DAY_KEYS.indexOf(key);
@@ -156,53 +151,63 @@ const DayRailButtons = forwardRef<DayRailHandle, Props>(function DayRailButtons(
       if (delta === 0) return;
       slideBySteps(delta, { silent: opts?.silent ?? true });
     },
-  }), [renderCenter, itemWidth, visibleCount, extraPad, valueKey]); // deps safe: methods recompute when layout changes
+  }), [renderCenter, itemWidth, visibleCount, extraPad, valueKey]);
 
   const centerOffset =
-    containerW > 0 ? (containerW / 2) - (sliceHalf + 0.5) * itemWidth : 0;
+    containerW > 0 ? containerW / 2 - (sliceHalf + 0.5) * itemWidth : 0;
 
   const stripStyle: React.CSSProperties = {
-    height,
+    height: "100%",                                  // NEW
     transform: `translateX(${centerOffset + tx}px)`,
     transition: animating ? `transform ${ANIM_MS}ms ease` : "none",
     willChange: "transform",
-    width: stripPixelWidth,   // keep explicit width so it can overflow
-    display: "flex",
+    width: stripPixelWidth,
+    display: "flex",                                  // ← flex track
+    alignItems: "center",
   };
 
   return (
-    <div className={styles.railButtonsBar} style={{ height }}>
+    <div className={styles.railButtonsBar} style={{ height: effectiveHeight }}>
       <div className={styles.btnGroup}>
         <button className={styles.ctrlBtn} onClick={() => slideBySteps(-1)} aria-label="Previous day">‹</button>
         <button className={styles.ctrlBtnSecondary} onClick={onPrevPoi} aria-label="Previous POI">•‹</button>
       </div>
 
-      <div className={`${styles.railWrapper} ${styles.railWrapperStatic}`} style={{ height }} ref={wrapRef}>
+      <div className={`${styles.railWrapper} ${styles.railWrapperStatic}`} style={{ height: "100%" }} ref={wrapRef}>
         <div className={styles.centerBand} />
         <div className={`${styles.rail} ${styles.railStatic}`} style={stripStyle}>
           {items.map((k, i) => {
             const key = k;
             const isActive = key === toKey(renderCenter);
             const has = hasPOIKeys?.has(key);
+
             const cls = isActive
-              ? has ? `${styles.item} ${styles.itemActive} ${styles.itemActiveHas}` : `${styles.item} ${styles.itemActive}`
+              ? has ? `${styles.item} ${styles.itemActive} ${styles.itemActiveHas}`
+                : `${styles.item} ${styles.itemActive}`
               : has ? `${styles.item} ${styles.itemHas}` : styles.item;
 
             return (
-              <div
+              <button
+                type="button"
                 key={`${key}-${i}`}
                 className={cls}
-                style={{ width: itemWidth, textAlign: "center" }}
-                role="button"
+                style={{ width: itemWidth, height: "70%" }}
                 onClick={() => clickChip(key)}
+                aria-pressed={isActive}
+                data-has-poi={has ? "1" : "0"}
+                aria-label={`Day ${key}${has ? " (has memory)" : ""}`}
               >
-                <span className={styles.label}>{key}</span>
+                {/* Centering wrapper: keeps label centered even if dot is shown */}
+                <span className={styles.itemCenter}>
+                  <span className={styles.label}>{key}</span>
+                </span>
+
+                {/* Dot is absolutely positioned so it doesn't shift the label */}
                 {has && <span className={styles.dot} aria-hidden="true" />}
-              </div>
+              </button>
             );
           })}
         </div>
-        {/* keep your masks; wrapper can clip overflow */}
         <div className={styles.edgeMaskLeft} />
         <div className={styles.edgeMaskRight} />
       </div>

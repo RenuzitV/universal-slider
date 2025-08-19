@@ -24,10 +24,6 @@ const fromDayKeyLocal = (key: string, year: number) => {
 };
 
 export default function SolarSystem() {
-  const width = useWindowWidth();
-  const aspect = 20 / 10;
-  const height = width / aspect;
-
   // fetch orbits once, then scale/annotate
   const [rawBodies] = useState<SolarBodyConfig[]>(DefaultSolarBodies);
   const [fetchedBodies, setFetchedBodies] = useState<SolarBodyConfig[]>([]);
@@ -68,8 +64,8 @@ export default function SolarSystem() {
   }, [pois]);
 
   // selection state
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [poiCursor, setPoiCursor] = useState<number | null>(null);
+  const [poiCursor, setPoiCursor] = useState<number | null>(pois.length - 1);
+  const [selectedDate, setSelectedDate] = useState<Date>(poiCursor != null ? pois[poiCursor].date : new Date());
 
   const currentYear = selectedDate.getFullYear();
   const currentDayKey = toDayKeyLocal(selectedDate);
@@ -180,38 +176,37 @@ export default function SolarSystem() {
 
   return (
     <div className={styles.appColumn}>
-      <div className={styles.topBar}>
-        <YearProgressRail
-          selectedDate={selectedDate}
-          minYear={minYear}
-          maxYear={maxYear}
-          onPrevYear={() => changeYearStep(-1)}
-          onNextYear={() => changeYearStep(+1)}
-          height={54}
-        />
-      </div>
 
       <div className={styles.topBar}>
+        <div className={`${styles.topBar} ${styles.yearBar}`}>
+          <YearProgressRail
+            selectedDate={selectedDate}
+            minYear={minYear}
+            maxYear={maxYear}
+            onPrevYear={() => changeYearStep(-1)}
+            onNextYear={() => changeYearStep(+1)}
+          />
+        </div>
+      </div>
+
+
+      <div className={`${styles.topBar} ${styles.dayBar}`}>
         <DayRailButtons
           ref={dayRailRef}
           valueKey={currentDayKey}
           onChange={setDayKey}
           hasPOIKeys={hasPOIKeys}
-          height={56}
           visibleCount={9}
-          extraPad={8}        // keep the extra padding
-          minItemWidth={76}   // allow overflow instead of shrinking
           onYearBoundary={bumpYear}
           onPrevPoi={prevPoi}
           onNextPoi={nextPoi}
+        /* keep your itemWidth='2.97vw' on the chip buttons */
         />
       </div>
 
       <div className={styles.canvasWrap}>
         <svg
-          width={width}
-          height={height}
-          className={styles.solarSystem}
+          className={`${styles.solarSystem} ${styles.solarSvg}`}
           viewBox={`${-MAX_COORD} ${-MAX_COORD} ${MAX_COORD * 2} ${MAX_COORD * 2}`}
           preserveAspectRatio="xMidYMid meet"
         >
@@ -243,16 +238,6 @@ export default function SolarSystem() {
       </div>
     </div>
   );
-}
-
-function useWindowWidth() {
-  const [width, setWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 1600);
-  useEffect(() => {
-    const handleResize = () => setWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-  return width;
 }
 
 function rescaleOrbits(bodies: SolarBodyConfig[]): [SolarBodyConfig[], number] {

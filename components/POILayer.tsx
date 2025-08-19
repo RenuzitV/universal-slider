@@ -106,9 +106,9 @@ export function POILayer({
     const isSelected = selectedPoiId === poi.id;
 
     // animate radius instead of using transform: scale()
-    const baseR = 16;
-    const hoverR = 18;
-    const selectedR = 24;
+    const baseR = 25;
+    const hoverR = 30;
+    const selectedR = 34;
     const r = isSelected ? selectedR : isHover ? hoverR : baseR;
 
     return (
@@ -124,7 +124,7 @@ export function POILayer({
           <circle
             cx={pos.x}
             cy={pos.y}
-            r={r + 18}
+            r={r + 30}
             fill="none"
             stroke="rgba(230,122,255,0.95)"
             strokeWidth={3.5}
@@ -145,8 +145,8 @@ export function POILayer({
             filter: isSelected
               ? "drop-shadow(0 0 14px rgba(230,122,255,0.9))"
               : isHover
-              ? "drop-shadow(0 0 10px rgba(230,122,255,0.6))"
-              : "none",
+                ? "drop-shadow(0 0 10px rgba(230,122,255,0.6))"
+                : "none",
           }}
         />
 
@@ -154,23 +154,25 @@ export function POILayer({
         {(isHover || isSelected) && (
           <foreignObject
             x={pos.x}
-            y={pos.y - 190}
+            y={pos.y}   // or your current offset
             width={1}
             height={1}
             style={{ overflow: "visible", pointerEvents: "none" }}
           >
-            <div className={`${styles.popup} ${styles.popupAnchor}`}>
-              <div className={styles.popupTitle}>{poi.title}</div>
-              <div className={styles.popupDate}>
-                {poi.date.toLocaleDateString("en-AU", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                  timeZone: "Australia/Melbourne",
-                })}
+            <div className={styles.popupContainer}>
+              <div className={`${styles.popup} ${styles.popupAnchor}`}>
+                <div className={styles.popupTitle}>{poi.title}</div>
+                <div className={styles.popupDate}>
+                  {poi.date.toLocaleDateString("en-AU", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    timeZone: "Australia/Melbourne",
+                  })}
+                </div>
+                <div className={styles.popupDesc}>{poi.description}</div>
               </div>
-              <div className={styles.popupDesc}>{poi.description}</div>
             </div>
           </foreignObject>
         )}
