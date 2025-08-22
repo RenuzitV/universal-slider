@@ -1,0 +1,113 @@
+/* --- Actions row under the day rail --- */
+.actionRow {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    /* left | center | right */
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+}
+
+/* slots so side buttons don't affect center alignment */
+.slotLeft {
+    justify-self: end;
+    min-height: 3vh;
+}
+
+.slotRight {
+    justify-self: start;
+    min-height: 3vh;
+}
+
+.slotCenter {
+    justify-self: center;
+    min-height: 3vh;
+}
+
+.actionsBar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    /* left | center | right */
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    width: 100%;
+}
+
+
+/* presence wrapper (same as before) */
+.wrap {
+    display: inline-flex;
+    overflow: hidden;
+    transition:
+        opacity 180ms ease,
+        transform 180ms ease,
+        max-width 180ms ease,
+        margin 180ms ease;
+    max-width: 14rem;
+}
+
+.visible {
+    opacity: 1;
+    transform: translateY(0);
+    max-width: 14rem;
+    margin: 0 2px;
+}
+
+.hidden {
+    opacity: 0;
+    transform: translateY(-6px);
+    max-width: 0;
+    margin: 0;
+    pointer-events: none;
+}
+
+/* Buttons */
+.actionBtn {
+    appearance: none;
+    border: 0;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    line-height: 1;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    transition: background 120ms ease, transform 80ms ease;
+    white-space: nowrap;
+}
+
+.actionBtn:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.primary {
+    background: rgba(230, 122, 255, 0.9);
+}
+
+.primary:hover {
+    background: rgba(230, 122, 255, 1);
+}
+
+
+/* slide/fade presence while preserving layout space */
+.slideWrap {
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.hiddenLeft {
+    opacity: 0;
+    transform: translateX(-24px);
+    pointer-events: none;
+}
+
+.hiddenRight {
+    opacity: 0;
+    transform: translateX(24px);
+    pointer-events: none;
+}
+
+.visible {
+    opacity: 1;
+    transform: translateX(0);
+}

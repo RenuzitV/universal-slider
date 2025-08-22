@@ -2,7 +2,6 @@
 import { createPortal } from "react-dom";
 import React, { useRef, useEffect, useState, useMemo } from "react";
 import { DefaultSolarBodies, SolarBodyConfig, Sun } from "./SolarBodies";
-import { defaultPOIs } from "./pointOfInterest";
 import { EphemerisPoint } from "../pages/api/earth-orbit";
 import { CreateSun } from "./Sun";
 import { POILayer } from "./POILayer";
@@ -10,15 +9,24 @@ import DayRailButtons, { DayRailHandle } from "./DayRailButtons";
 import YearProgressRail from "./YearProgressRail";
 import OrbitPath from "./OrbitPath";
 import EarthMarker from "./EarthMarker";
-import { sortPOIs } from "./poiData";
 import { PointOfInterest } from "./pointOfInterest";
 import POIGallery from "./POIGallery";
 import layout from "../styles/solar-layout.module.css";
+import actionStyles from "../styles/action-button.module.css";
 import { useIsDomReady } from "../utils/useIsDomReady";
+import { fetchPOIs } from "../lib/api";
+import POIForm from "./POIForm";
+import BodyPortal from "./BodyPortal";
 
 const MAX_COORD = 1000;
 
 // helpers
+
+const isSameYMD = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
+
 const toDayKeyLocal = (d: Date) =>
   `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -35,6 +43,10 @@ export default function SolarSystem() {
     DefaultSolarBodies.find(b => b.name === "Earth")!
   );
   const hasFetched = useRef(false);
+
+  const dayRailRef = useRef<DayRailHandle>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingPoi, setEditingPoi] = useState<PointOfInterest | undefined>(undefined);
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -61,17 +73,73 @@ export default function SolarSystem() {
 
   const domReady = useIsDomReady();
 
+  const onSaved = (saved: PointOfInterest) => {
+    setPois(prev => {
+      const i = prev.findIndex(p => p.id === saved.id);
+      const next = i >= 0 ? prev.map(p => (p.id === saved.id ? saved : p)) : [...prev, saved];
+      return next.sort((a, b) => a.date.getTime() - b.date.getTime());
+    });
+    setSelectedDate(saved.date);      // optional: jump to the saved day
+  };
+
   // POIs (sorted)
-  const pois = useMemo(() => sortPOIs(defaultPOIs), []);
+  // ---- POIs (from API) ----
+  const [pois, setPois] = useState<PointOfInterest[]>([]);
+  const [poiCursor, setPoiCursor] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  // load once on mount
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const data = await fetchPOIs();
+
+        // Normalize wire DTO → internal type (Date + imageURLs string[])
+        const normalized: PointOfInterest[] = data
+          .map(d => ({
+            id: d.id,
+            date: new Date(d.date),
+            title: d.title,
+            description: d.description,
+            imageURLs: d.imageURLs ?? [],
+          }))
+          .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+        if (!alive) return;
+
+        setPois(normalized);
+
+        // initial cursor: latest POI ≤ today, else last
+        const now = Date.now();
+        const idx =
+          normalized.findLastIndex?.(p => p.date.getTime() <= now) ??
+          (() => { // tiny polyfill for findLastIndex
+            for (let i = normalized.length - 1; i >= 0; i--) {
+              if (normalized[i].date.getTime() <= now) return i;
+            }
+            return -1;
+          })();
+
+        const initialIdx = idx >= 0 ? idx : normalized.length - 1;
+        setPoiCursor(normalized.length ? initialIdx : null);
+        setSelectedDate(normalized.length ? normalized[initialIdx].date : new Date());
+      } catch (e) {
+        console.error("Failed to fetch POIs", e);
+        // Optional: keep selectedDate as today and leave pois empty
+      }
+    })();
+
+    return () => { alive = false; };
+  }, []);
+
+  // fast id→index map for lookups
   const idToIndex = useMemo(() => {
     const m = new Map<string, number>();
     pois.forEach((p, i) => m.set(p.id, i));
     return m;
   }, [pois]);
-
-  // selection state
-  const [poiCursor, setPoiCursor] = useState<number | null>(pois.length - 1);
-  const [selectedDate, setSelectedDate] = useState<Date>(poiCursor != null ? pois[poiCursor].date : new Date());
 
   const currentYear = selectedDate.getFullYear();
   const currentDayKey = toDayKeyLocal(selectedDate);
@@ -83,13 +151,11 @@ export default function SolarSystem() {
     pois.forEach(p => s.add(p.date.getFullYear()));
     return Array.from(s).sort((a, b) => a - b);
   }, [pois]);
+
   const minYear = yearsWithPOIs[0] ?? new Date().getFullYear();
   const maxYear = yearsWithPOIs[yearsWithPOIs.length - 1] ?? minYear;
   const navMinYear = minYear - 1;
   const navMaxYear = maxYear + 1;
-
-  // day rail ref (for programmatic animation)
-  const dayRailRef = useRef<DayRailHandle>(null);
 
   // jump to a specific POI (date + cursor + animate rail)
   const jumpToPoi = (idx: number) => {
@@ -175,6 +241,51 @@ export default function SolarSystem() {
       .forEach(p => s.add(toDayKeyLocal(p.date)));
     return s;
   }, [pois, currentYear]);
+  const currentDayHasPoi = useMemo(
+    () => pois.some(p => isSameYMD(p.date, selectedDate)),
+    [pois, selectedDate]
+  );
+
+  // If editing, which POI? Prefer the cursor if it matches the day; else first POI that day.
+  const poiForEdit = useMemo(() => {
+    if (!pois.length) return undefined;
+    if (poiCursor != null && pois[poiCursor] && isSameYMD(pois[poiCursor].date, selectedDate)) {
+      return pois[poiCursor];
+    }
+    return pois.find(p => isSameYMD(p.date, selectedDate)) ?? undefined;
+  }, [pois, poiCursor, selectedDate]);
+
+  // Open create on selected day
+  const onCreate = () => {
+    setEditingPoi(undefined);
+    setFormOpen(true);
+  };
+
+  // Open edit on that day's POI
+  const onEdit = () => {
+    if (!poiForEdit) return;
+    setEditingPoi(poiForEdit);
+    setFormOpen(true);
+  };
+
+  // Jump to today (update selectedDate + animate rail)
+  const onToday = () => {
+    const now = new Date();
+    setSelectedDate(now);
+    const k = toDayKeyLocal(now);
+    dayRailRef.current?.animateToKey(k, { silent: true });
+  };
+
+  // When a POI is saved (create or edit), refresh local list and jump to its day
+  const onSavedPoi = (saved: PointOfInterest) => {
+    setPois(prev => {
+      const i = prev.findIndex(p => p.id === saved.id);
+      const next = i >= 0 ? prev.map(p => (p.id === saved.id ? saved : p)) : [...prev, saved];
+      return next.sort((a, b) => a.date.getTime() - b.date.getTime());
+    });
+    setSelectedDate(saved.date);
+    dayRailRef.current?.animateToKey(toDayKeyLocal(saved.date), { silent: true });
+  };
 
   // earth body (prefer fetched)
   const earthBody: SolarBodyConfig | null =
@@ -197,18 +308,46 @@ export default function SolarSystem() {
       </div>
 
 
-      <div className={`${layout.topBar} ${layout.dayBar}`}>
+      <div className={layout.topBar}>
         <DayRailButtons
           ref={dayRailRef}
           valueKey={currentDayKey}
           onChange={setDayKey}
           hasPOIKeys={hasPOIKeys}
+          height={56}
           visibleCount={9}
           onYearBoundary={bumpYear}
           onPrevPoi={prevPoi}
           onNextPoi={nextPoi}
-        /* keep your itemWidth='2.97vw' on the chip buttons */
         />
+      </div>
+
+      {/* Actions row under the day rail */}
+      <div className={actionStyles.actionsBar}>
+        {/* Left: Create (only when NOT on a POI) */}
+        <div className={actionStyles.slotLeft}>
+          <div className={`${actionStyles.wrap} ${currentDayHasPoi ? actionStyles.hidden : actionStyles.visible}`}>
+            <button className={`${actionStyles.actionBtn} ${actionStyles.primary}`} onClick={onCreate}>
+              ＋ Create
+            </button>
+          </div>
+        </div>
+
+        {/* Center: Today (always) */}
+        <div className={actionStyles.slotCenter}>
+          <div className={`${actionStyles.wrap} ${actionStyles.visible}`}>
+            <button className={actionStyles.actionBtn} onClick={onToday}>Today</button>
+          </div>
+        </div>
+
+        {/* Right: Edit (only when ON a POI) */}
+        <div className={actionStyles.slotRight}>
+          <div className={`${actionStyles.wrap} ${currentDayHasPoi ? actionStyles.visible : actionStyles.hidden}`}>
+            <button className={actionStyles.actionBtn} onClick={onEdit} disabled={!poiForEdit}>
+              Edit
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className={layout.canvasWrap}>
@@ -245,12 +384,23 @@ export default function SolarSystem() {
           ) : null}
         </svg>
 
-        {domReady && typeof document !== "undefined" && document.body
-          ? createPortal(
-            <POIGallery poi={galleryPoi} open={!!galleryPoi} onClose={() => setGalleryPoi(null)} />,
-            document.body
-          )
-          : null}
+        {galleryPoi && (
+          <BodyPortal>
+            <POIGallery poi={galleryPoi} open onClose={() => setGalleryPoi(null)} />
+          </BodyPortal>
+        )}
+
+        {formOpen && (
+          <BodyPortal>
+            <POIForm
+              open={formOpen}
+              onClose={() => setFormOpen(false)}
+              onSaved={onSavedPoi}
+              poi={editingPoi}
+              initialDate={editingPoi ? undefined : selectedDate}  /* prefills create with selected day */
+            />
+          </BodyPortal>
+        )}
       </div>
     </div>
   );
