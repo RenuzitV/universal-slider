@@ -1,185 +1,17 @@
-/* Root: sits inside .topBar (which already has a fixed height) */
-.railRoot {
-  width: 100%;
-  height: 100%;
-  display: flex;                 /* ← flex instead of grid */
-  align-items: center;
-  gap: 0.6vw;                    /* space between prev/next and viewport */
-  overflow: hidden;              /* make sure content can't escape */
-}
-
-/* Optional prev/next buttons on the sides */
-.railCtrl {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.0vw;
-  height: 2.0vw;
-  border-radius: 9999px;
-  user-select: none;
-  cursor: pointer;
-}
-
-/* Viewport that masks the sliding track */
-.railViewport {
-  position: relative;
-  flex: 1 1 auto;
-  height: 100%;
-  overflow: hidden;              /* mask the track */
-}
-
-/* Center guide (if you show a center highlight) */
-.railCenterGuide {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 0;
-  border-left: 2px dashed rgba(255,255,255,.15); /* optional */
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-/* The sliding track: now a flex row */
-.railTrack {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  display: flex;                 /* ← important */
-  align-items: center;
-  gap: 0.6vw;                    /* spacing between items */
-  will-change: transform;
-  transition: transform 280ms cubic-bezier(.2,.7,0,1);
-}
-
-/* Each chip/button item */
-.railItem {
-  flex: 0 0 auto;
-  min-width: 2.97vw;            /* ~76px at 2560w; you can keep your inline width too */
-  height: 70%;                  /* fit the bar nicely */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 .6vw;
-  border-radius: 9999px;
-  white-space: nowrap;
-  user-select: none;
-  cursor: pointer;
-}
-
-/* Active state */
-.railItemActive {
-  box-shadow: 0 0 0 2px rgba(230,122,255,.35) inset;
-  animation: dayChipPop 160ms ease-out;
-}
-@keyframes dayChipPop {
-  0% { transform: scale(.94); }
-  60% { transform: scale(1.04); }
-  100% { transform: scale(1); }
-}
-
-.railButtonsBar .label {
-  font-size: 13px;
-}
-
-.railWrapper {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-  /* prevent scroll chaining to page (Chrome/Edge) */
-  overscroll-behavior-x: contain;
-  overscroll-behavior-y: none;
-}
-
-.rail {
-  height: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  /* hints for touch/trackpad */
-  touch-action: pan-x;
-  /* allow horizontal panning only */
-  -webkit-overflow-scrolling: touch;
-}
-
-.rail::-webkit-scrollbar {
-  display: none;
-}
-
-.itemHas {
-  color: #e67aff;
-}
-
-.itemActive {
-  transform: scale(1.07);
-  transform: scale(1.05);
-  font-weight: 700;
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.itemActiveHas {
-  color: #ffffff;
-  background: rgba(230, 122, 255, 0.25);
-}
-
-.centerBand {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
-  transform: translateX(-50%);
-  border-left: 1px dashed rgba(255, 255, 255, 0.18);
-  pointer-events: none;
-}
-
-.edgeMaskLeft,
-.edgeMaskRight {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 40px;
-  pointer-events: none;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0));
-}
-
-.edgeMaskLeft {
-  left: 0;
-}
-
-.edgeMaskRight {
-  right: 0;
-  transform: scaleX(-1);
-}
-
-/* Button bar layout */
+/* Root: sits inside .topBar (parent gives fixed height) */
 .railButtonsBar {
+  position: relative;     /* create stacking context */
+  z-index: 20;            /* above the SVG/canvas */
+  width: 100%;
+  height: 100%;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 8px;
+  pointer-events: auto;   /* ensure clickable */
 }
 
-/* Hide any native scrolling, we drive position with transform */
-.railWrapperStatic {
-  overflow: hidden;
-}
-
-.railStatic {
-  will-change: transform;
-  transition: transform 160ms ease;
-  overflow: hidden;
-  /* just in case */
-}
-
-/* Controls */
+/* side controls */
 .btnGroup {
   display: flex;
   flex-direction: column;
@@ -200,133 +32,99 @@
   background: rgba(255, 255, 255, 0.08);
   transition: background 120ms ease, transform 80ms ease;
 }
-
 .ctrlBtn:hover,
-.ctrlBtnSecondary:hover {
-  background: rgba(255, 255, 255, 0.14);
-}
-
+.ctrlBtnSecondary:hover { background: rgba(255,255,255,0.14); }
 .ctrlBtn:active,
-.ctrlBtnSecondary:active {
-  transform: scale(0.98);
-}
+.ctrlBtnSecondary:active { transform: scale(0.98); }
+.ctrlBtnSecondary { font-size: 16px; background: rgba(230,122,255,0.18); }
 
-.ctrlBtnSecondary {
-  font-size: 16px;
-  background: rgba(230, 122, 255, 0.18);
-}
-
-/* Year progress rail */
-.yearBarWrap {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 8px;
-}
-
-.yearTrackArea {
+/* viewport + masks */
+.railWrapper {
   position: relative;
+  width: 100%;
   height: 100%;
-  display: grid;
-  place-items: center;
+  overflow: hidden;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
 }
 
-.yearTrack {
+.centerBand {
   position: absolute;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(to right, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.25));
-  border-radius: 999px;
-}
-
-.yearTick {
-  position: absolute;
-  top: 50%;
+  top: 0; bottom: 0; left: 50%;
   width: 1px;
-  height: 12px;
-  background: rgba(255, 255, 255, 0.35);
-  transform: translateY(-50%);
-}
-
-.yearThumb {
-  position: absolute;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #fff;
-  transform: translate(-50%, -50%);
-  transition: left 220ms ease;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2);
-}
-
-.yearCenterChip {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  padding: 6px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  display: grid;
-  place-items: center;
-  gap: 2px;
-  pointer-events: none;
-  /* purely informational */
-}
-
-.yearLabel {
-  font-weight: 700;
-}
-
-.yearSub {
-  font-size: 12px;
-  opacity: 0.8;
-}
-
-/* shows near year end; a little dashed gate just right of center */
-.yearCutoff {
-  position: absolute;
-  top: 50%;
-  height: 20px;
-  width: 8px;
-  border-right: 2px dashed rgba(230, 122, 255, 0.9);
-  transform: translate(calc(50% + 42px), -50%);
-  /* sit to the right of chip */
-  transition: opacity 180ms ease;
+  transform: translateX(-50%);
+  border-left: 1px dashed rgba(255,255,255,0.18);
   pointer-events: none;
 }
 
-/* day chip button */
-.item {
-  position: relative;          /* for the absolute dot */
-  flex: 0 0 auto;
-  display: flex;               /* ← flex button */
+.edgeMaskLeft,
+.edgeMaskRight {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  background: linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0));
+}
+.edgeMaskLeft { left: 0; }
+.edgeMaskRight { right: 0; transform: scaleX(-1); }
+
+/* sliding track (programmatic animation version) */
+.railStatic {
+  position: absolute;
+  left: 0; top: 0;
+  height: 100%;
+  display: flex;
   align-items: center;
-  justify-content: center;     /* center the inner wrapper */
+  will-change: transform;
+  transition: transform 160ms ease;
+}
+
+/* item/chip */
+.item {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0 .6vw;
   border-radius: 9999px;
   white-space: nowrap;
   cursor: pointer;
   border: 0;
-  background: transparent;     /* or your chip bg */
+  background: transparent;
   color: inherit;
 }
 
-/* inner wrapper ensures text stays centered no matter what */
+.itemHas { color: #e67aff; }
+
+.itemActive {
+  transform-origin: center;
+  animation: dayChipPop 160ms ease-out;
+  font-weight: 700;
+  opacity: 1;
+  background: rgba(255,255,255,0.06);
+}
+.itemActiveHas {
+  color: #fff;
+  background: rgba(230,122,255,0.25);
+  box-shadow: 0 0 0 2px rgba(230,122,255,0.35) inset;
+}
+
+@keyframes dayChipPop {
+  0% { transform: scale(.94); }
+  60% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
 .itemCenter {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;                 /* span full chip */
-  pointer-events: none;        /* clicks handled by the button */
+  width: 100%;
+  pointer-events: none; /* clicks handled by .item */
 }
-
-/* your existing label size is fine; keep it */
 .label { text-align: center; }
 
-/* POI dot no longer affects centering */
 .dot {
   position: absolute;
   right: 0.35vw;
@@ -339,26 +137,5 @@
   pointer-events: none;
 }
 
-.itemActive {
-  animation: dayChipPop 160ms ease-out;
-  transform-origin: center;
-}
-
-@keyframes dayChipPop {
-  0% {
-    transform: scale(0.94);
-  }
-
-  60% {
-    transform: scale(1.04);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-/* optional: make active-with-POI feel a bit brighter */
-.itemActiveHas {
-  box-shadow: 0 0 0 2px rgba(230, 122, 255, 0.35) inset;
-}
+/* programmatic rail layout helpers */
+.railWrapperStatic { overflow: hidden; }

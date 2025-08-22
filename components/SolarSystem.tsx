@@ -1,16 +1,20 @@
 // src/components/SolarSystem.tsx
+import { createPortal } from "react-dom";
 import React, { useRef, useEffect, useState, useMemo } from "react";
 import { DefaultSolarBodies, SolarBodyConfig, Sun } from "./SolarBodies";
 import { defaultPOIs } from "./pointOfInterest";
 import { EphemerisPoint } from "../pages/api/earth-orbit";
 import { CreateSun } from "./Sun";
 import { POILayer } from "./POILayer";
-import styles from "../styles/solar-system.module.css";
 import DayRailButtons, { DayRailHandle } from "./DayRailButtons";
 import YearProgressRail from "./YearProgressRail";
 import OrbitPath from "./OrbitPath";
 import EarthMarker from "./EarthMarker";
 import { sortPOIs } from "./poiData";
+import { PointOfInterest } from "./pointOfInterest";
+import POIGallery from "./POIGallery";
+import layout from "../styles/solar-layout.module.css";
+import { useIsDomReady } from "../utils/useIsDomReady";
 
 const MAX_COORD = 1000;
 
@@ -54,6 +58,8 @@ export default function SolarSystem() {
       }
     })();
   }, [rawBodies]);
+
+  const domReady = useIsDomReady();
 
   // POIs (sorted)
   const pois = useMemo(() => sortPOIs(defaultPOIs), []);
@@ -174,23 +180,24 @@ export default function SolarSystem() {
   const earthBody: SolarBodyConfig | null =
     (fetchedBodies.find(b => b.name === "Earth") as SolarBodyConfig | undefined) ?? earth ?? null;
 
-  return (
-    <div className={styles.appColumn}>
+  const [galleryPoi, setGalleryPoi] = useState<PointOfInterest | null>(null);
+  const openGallery = (poi: PointOfInterest) => setGalleryPoi(poi);
+  const closeGallery = () => setGalleryPoi(null);
 
-      <div className={styles.topBar}>
-        <div className={`${styles.topBar} ${styles.yearBar}`}>
-          <YearProgressRail
-            selectedDate={selectedDate}
-            minYear={minYear}
-            maxYear={maxYear}
-            onPrevYear={() => changeYearStep(-1)}
-            onNextYear={() => changeYearStep(+1)}
-          />
-        </div>
+  return (
+    <div className={layout.appColumn}>
+      <div className={`${layout.topBar} ${layout.yearBar}`}>
+        <YearProgressRail
+          selectedDate={selectedDate}
+          minYear={minYear}
+          maxYear={maxYear}
+          onPrevYear={() => changeYearStep(-1)}
+          onNextYear={() => changeYearStep(+1)}
+        />
       </div>
 
 
-      <div className={`${styles.topBar} ${styles.dayBar}`}>
+      <div className={`${layout.topBar} ${layout.dayBar}`}>
         <DayRailButtons
           ref={dayRailRef}
           valueKey={currentDayKey}
@@ -204,13 +211,13 @@ export default function SolarSystem() {
         />
       </div>
 
-      <div className={styles.canvasWrap}>
+      <div className={layout.canvasWrap}>
         <svg
-          className={`${styles.solarSystem} ${styles.solarSvg}`}
+          className={layout.solarSystem}
           viewBox={`${-MAX_COORD} ${-MAX_COORD} ${MAX_COORD * 2} ${MAX_COORD * 2}`}
           preserveAspectRatio="xMidYMid meet"
         >
-          <CreateSun x={0} y={0} sun={Sun} />
+          <CreateSun sun={Sun} />
 
           {earthBody?.orbitTrajectory?.length ? (
             <>
@@ -231,10 +238,19 @@ export default function SolarSystem() {
                   const i = idToIndex.get(id);
                   if (i != null) jumpToPoi(i);
                 }}
+                onOpenGallery={openGallery}
               />
+
             </>
           ) : null}
         </svg>
+
+        {domReady && typeof document !== "undefined" && document.body
+          ? createPortal(
+            <POIGallery poi={galleryPoi} open={!!galleryPoi} onClose={() => setGalleryPoi(null)} />,
+            document.body
+          )
+          : null}
       </div>
     </div>
   );

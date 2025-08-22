@@ -1,0 +1,96 @@
+/* src/styles/popup.module.css */
+
+/* Flex wrapper for centering inside foreignObject */
+.popupContainer {
+  position: relative;
+  pointer-events: none; /* FO container stays non-interactive */
+}
+
+/* Positions the popup relative to the anchor point (the POI dot) */
+.popupAnchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(2%, -110%);
+}
+
+/* The popup card */
+.popup {
+  background: rgba(30, 36, 64, 0.97);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  border: 5px solid #e67aff;
+  width: max-content;     /* grow to fit title line */
+  max-width: none;
+  pointer-events: auto;   /* make it clickable */
+  will-change: transform, opacity;
+  animation: poiPopupIn 500ms ease-out; /* entry animation */
+}
+
+/* Title/Date/Desc typography (use rem/em for accessibility) */
+.popupTitle {
+  white-space: nowrap;   /* single line */
+  font-size: 5rem;
+  line-height: 1.2;
+  margin-bottom: 0.625rem;
+}
+
+.popupDate {
+  font-size: 1.8rem;
+  line-height: 1.25;
+  opacity: .85;
+  margin-bottom: .875rem;
+}
+
+.popupDesc {
+  font-size: 2.5rem;
+  line-height: 1.35;
+}
+
+.popupImg {
+  width: 100%;
+  border-radius: 8px;
+  margin-top: 6px;
+}
+
+/* Photo count pill (🖼️ +N) */
+.photoPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;          /* ← guarantees emoji spacing */
+  white-space: nowrap;
+
+  font-size: 2rem;
+  line-height: 1;
+  padding: 1rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(230, 122, 255, 0.15);
+  border: 3px solid rgba(230, 122, 255, 0.5);
+  margin-left: 0.5rem;
+}
+
+.photoIcon { line-height: 1; }
+.photoCount { line-height: 1; }
+
+/* Animations */
+@keyframes poiPopupIn {
+  from { transform: translateY(-4px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@media (max-width: 480px) {
+  .popupTitle {
+    font-size: 1.75rem;
+  }
+
+  .popupDate {
+    font-size: 1.125rem;
+  }
+
+  .popupDesc {
+    font-size: 1.125rem;
+  }
+}

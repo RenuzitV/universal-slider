@@ -1,0 +1,47 @@
+/* src/styles/solar-layout.module.css */
+
+/* Page scaffold */
+.appColumn {
+  display: flex;
+  flex-direction: column;
+  height: 100%;        /* was 100vh → now respect parent */
+}
+
+
+/* Bars (Year & Day) */
+.topBar {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  padding: 0.6vh 1vw;
+  position: relative;
+  z-index: 10;         /* keep above SVG */
+  overflow: hidden;    /* hide chip overflow; rails animate inside */
+  background: transparent;
+}
+
+/* Canvas area holding the SVG and any overlays (e.g., gallery) */
+.canvasWrap {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  width: 100%;         /* was 100vw → avoid mobile horizontal overflow */
+  min-height: 0;       /* allow child to shrink to fit */
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+
+/* SVG fills the box it’s given */
+.solarSystem,
+.solarSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+/* Optional (if you add a class to the Sun element) */
+.sun {
+  overflow: visible;
+}

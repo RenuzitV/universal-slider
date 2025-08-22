@@ -1,0 +1,17 @@
+/* src/styles/poi.module.css */
+
+/* POI circles (we animate r inline if needed) */
+.poi {
+  fill: rgba(230, 122, 255, 1);
+  stroke: rgba(230, 122, 255, 0.35);
+}
+
+/* Selected ring spins */
+.rotating {
+  transform-origin: center;
+  animation: poiDashSpin 2.2s linear infinite;
+}
+
+@keyframes poiDashSpin {
+  to { stroke-dashoffset: -64; }
+}

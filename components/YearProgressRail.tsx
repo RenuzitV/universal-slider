@@ -1,6 +1,6 @@
 // src/components/YearProgressRail.tsx
 import React, { useMemo, useRef, useEffect, useState } from "react";
-import styles from "../styles/day-rail.module.css";
+import y from "../styles/year-rail.module.css";
 import { startOfYear, endOfYear, daysInYear, dayOfYear } from "./dateRange";
 
 type CSSHeight = number | string; // NEW
@@ -44,9 +44,9 @@ export default function YearProgressRail({
   const startMs = +timelineStart;
   const progress = width ? Math.max(0, Math.min(1, (selMs - startMs) / (totalDays * 86400000))) : 0;
 
-  const y = selectedDate.getUTCFullYear();
+  const yval = selectedDate.getUTCFullYear();
   const doy = dayOfYear(selectedDate);
-  const remain = daysInYear(y) - doy;
+  const remain = daysInYear(yval) - doy;
 
   const ticks = useMemo(() => {
     if (!width) return [];
@@ -61,25 +61,25 @@ export default function YearProgressRail({
 
   const thumbX = Math.round(progress * width);
 
-  return (
-    <div className={styles.yearBarWrap} style={{ height: effectiveHeight, width: "100%" }}>
-      <div className={styles.btnGroup}>
-        <button className={styles.ctrlBtn} onClick={onPrevYear} aria-label="Previous year">‹</button>
+ return (
+    <div className={y.yearBarWrap} style={{ height }}>
+      <div className={y.btnGroup}>
+        <button className={y.ctrlBtn} onClick={onPrevYear} aria-label="Previous year">‹</button>
       </div>
 
-      <div className={styles.yearTrackArea} ref={areaRef}>
-        <div className={styles.yearTrack} />
-        {ticks.map(t => (<div key={t.year} className={styles.yearTick} style={{ left: t.x }} title={`${t.year}`} />))}
-        <div className={styles.yearThumb} style={{ left: thumbX }} />
-        <div className={styles.yearCenterChip}>
-          <div className={styles.yearLabel}>{y}</div>
-          <div className={styles.yearSub}>{doy}/{daysInYear(y)}</div>
+      <div className={y.yearTrackArea} ref={areaRef}>
+        <div className={y.yearTrack} />
+        {ticks.map(t => (<div key={t.year} className={y.yearTick} style={{ left: t.x }} title={`${t.year}`} />))}
+        <div className={y.yearThumb} style={{ left: thumbX }} />
+        <div className={y.yearCenterChip}>
+          <div className={y.yearLabel}>{yval}</div>
+          <div className={y.yearSub}>{doy}/{daysInYear(yval)}</div>
         </div>
-        <div className={styles.yearCutoff} style={{ opacity: remain <= thresholdDays ? 1 : 0 }} />
+        <div className={y.yearCutoff} style={{ opacity: remain <= thresholdDays ? 1 : 0 }} />
       </div>
 
-      <div className={styles.btnGroup}>
-        <button className={styles.ctrlBtn} onClick={onNextYear} aria-label="Next year">›</button>
+      <div className={y.btnGroup}>
+        <button className={y.ctrlBtn} onClick={onNextYear} aria-label="Next year">›</button>
       </div>
     </div>
   );

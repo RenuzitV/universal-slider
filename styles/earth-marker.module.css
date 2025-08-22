@@ -1,0 +1,17 @@
+/* src/styles/earth-marker.module.css */
+
+.planetWrap {
+  transition: transform 420ms cubic-bezier(.2, .7, 0, 1);
+  will-change: transform;
+}
+
+.earthDot {
+  fill: #58a6ff;
+}
+
+.earthGlow {
+  fill: none;
+  stroke: rgba(88, 166, 255, 0.4);
+  stroke-width: 6;
+  filter: drop-shadow(0 0 6px rgba(88, 166, 255, 0.6));
+}

@@ -1,26 +1,25 @@
-import { SolarBodyConfig } from "./SolarBodies";
-import styles from "../styles/solar-system.module.css";
+// src/components/Sun.tsx
+import type { SolarBodyConfig } from "./SolarBodies";
+import sunStyles from "../styles/sun.module.css";
 
-export function CreateSun({ x: centerX, y: centerY, sun }: { x: number, y: number, sun: SolarBodyConfig }) {
-    return (
-        <g>
-            <circle
-                cx={0}
-                cy={0}
-                r={sun.radius}
-                fill={sun.color}
-                filter="url(#sunGlow)"
-                className={styles.Sun}
-            />
-            <defs>
-                <filter id="sunGlow">
-                    <feGaussianBlur stdDeviation="8" result="coloredBlur" />
-                    <feMerge>
-                        <feMergeNode in="coloredBlur" />
-                        <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                </filter>
-            </defs>
-        </g>
-    )
+export function CreateSun({
+  sun,
+}: {
+  sun: SolarBodyConfig;
+}) {
+  return (
+    <g className={sunStyles.sun}>
+      <defs>
+        <filter id="sunGlow">
+          <feGaussianBlur stdDeviation="8" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <circle cx={0} cy={0} r={sun.radius} fill={sun.color} filter="url(#sunGlow)" />
+    </g>
+  );
 }

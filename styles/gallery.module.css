@@ -1,0 +1,210 @@
+/* src/styles/gallery.module.css */
+
+/* overlay + panel shell */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.panel {
+  position: relative;
+  width: min(92vw, 1200px);
+  /* Height is square based: two square panels side-by-side, so height = half of usable width */
+  /* We’ll let the inner squares define their own height via aspect-ratio. */
+  background: #111827;
+  color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.5);
+  padding: 1.2vw;
+}
+
+/* two-square domino */
+.domino {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2vw;
+}
+
+/* Square panels using aspect-ratio */
+.infoPanel, .galleryPanel {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: rgba(255,255,255,0.04);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* left: info */
+.infoInner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1vw;
+  gap: 0.6vw;
+}
+.infoTitle {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* one-line clamp */
+}
+.infoDate {
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+.infoDesc {
+  font-size: 1rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;  /* clamp to a few lines */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.infoCount {
+  margin-top: auto;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+/* right: gallery carousel */
+.galleryPanel {
+  background: #0b1220;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* nav arrows */
+.nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 9999px;
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.left { left: 0.6rem; }
+.right { right: 0.6rem; }
+
+.counter {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(0,0,0,0.4);
+  font-size: 0.9rem;
+}
+
+.empty {
+  opacity: 0.7;
+  font-size: 1rem;
+}
+
+/* close button */
+.close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  background: transparent;
+  color: #fff;
+  border: 0;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+/* small screens: stack vertically */
+@media (max-width: 700px) {
+  .domino {
+    grid-template-columns: 1fr;
+  }
+  .panel { width: 94vw; }
+}
+
+/* ---------- ENTER ANIMATIONS ---------- */
+@keyframes overlayFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.overlay {
+  animation: overlayFade 160ms ease-out;
+}
+
+@keyframes panelPop {
+  from { transform: translateY(8px) scale(.985); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+.panel {
+  animation: panelPop 220ms cubic-bezier(.2,.7,0,1);
+}
+
+/* slight stagger so the two squares “rise” in */
+@keyframes sqRise {
+  from { transform: translateY(6px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+.infoPanel,
+.galleryPanel {
+  animation: sqRise 300ms ease-out both;
+}
+.infoPanel  { animation-delay: 60ms; }
+.galleryPanel { animation-delay: 120ms; }
+
+/* image cross-fade on change */
+@keyframes imgIn {
+  from { opacity: 0; transform: scale(1.02); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.img {
+  animation: imgIn 220ms ease;
+  will-change: opacity, transform;
+}
+
+/* counter badge pop-in */
+@keyframes badgeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.counter {
+  animation: badgeIn 240ms ease 140ms both;
+}
+
+/* nav & close interactions */
+.nav {
+  transition: transform 120ms ease, background-color 120ms ease, opacity 120ms ease;
+}
+.nav:hover  { transform: translateY(-50%) scale(1.06); background: rgba(0,0,0,0.45); }
+.nav:active { transform: translateY(-50%) scale(0.96); }
+.nav:focus-visible { outline: 2px solid rgba(255,255,255,.6); outline-offset: 2px; }
+
+.close {
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+.close:hover  { transform: scale(1.06); }
+.close:active { transform: scale(0.94); }
+
+/* ---------- REDUCED MOTION ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .overlay, .panel, .infoPanel, .galleryPanel, .img, .counter {
+    animation: none !important;
+  }
+  .nav, .close { transition: none !important; }
+}
