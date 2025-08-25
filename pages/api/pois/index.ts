@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { listPOIs, upsertPOI } from "../../../lib/poiStore";
 import type { CreatePOIInput } from "../../../types/poi";
+import { genId } from "../../../lib/id";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "GET") {
@@ -9,9 +10,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json(pois);
   }
   if (req.method === "POST") {
-    const b = req.body;
+    const b = req.body ?? {};
+    const id = (typeof b.id === "string" && b.id.trim()) || genId("poi");
     const saved = await upsertPOI({
-      id: b.id, // client can choose id (e.g., "poi4"); else generate here.
+      id,
       title: b.title,
       description: b.description ?? "",
       date: new Date(b.date),
