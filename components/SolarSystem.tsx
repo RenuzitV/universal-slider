@@ -323,7 +323,6 @@ export default function SolarSystem() {
           valueKey={currentDayKey}
           onChange={setDayKey}
           hasPOIKeys={hasPOIKeys}
-          height={56}
           visibleCount={9}
           onYearBoundary={bumpYear}
           onPrevPoi={prevPoi}

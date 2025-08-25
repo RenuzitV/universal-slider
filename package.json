@@ -9,8 +9,8 @@
         "start": "next start",
         "lint": "next lint",
         "prisma:generate": "prisma generate",
-        "prisma:migrate:deploy": "cross-env DATABASE_URL=$NETLIFY_DATABASE_URL prisma migrate deploy",
-        "prebuild": "cross-env DATABASE_URL=$NETLIFY_DATABASE_URL prisma migrate deploy"
+        "prisma:migrate:deploy": "prisma migrate deploy",
+        "prebuild": "prisma migrate deploy"
     },
     "dependencies": {
         "@netlify/blobs": "^8.2.0",

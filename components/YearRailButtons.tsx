@@ -10,14 +10,12 @@ export default function YearRailButtons({
   valueYear,            // current selected year
   onChange,
   itemWidth = 84,
-  height = 48,
   visibleCount = 7,     // keep odd
 }: {
   years: number[];
   valueYear: number;
   onChange: (y: number) => void;
   itemWidth?: number;
-  height?: number;
   visibleCount?: number;
 }) {
   const period = years.length;
@@ -95,19 +93,19 @@ export default function YearRailButtons({
   };
 
   const stripStyle: React.CSSProperties = {
-    height,
+    height: `100%`,
     transform: `translateX(${tx}px)`,
     transition: anim ? `transform ${ANIM_MS}ms ease` : "none",
     willChange: "transform",
   };
 
   return (
-    <div className={styles.railButtonsBar} style={{ height }}>
+    <div className={styles.railButtonsBar}>
       <div className={styles.btnGroup}>
         <button className={styles.ctrlBtn} onClick={prev} aria-label="Previous year">‹</button>
       </div>
 
-      <div className={`${styles.railWrapper} ${styles.railWrapperStatic}`} style={{ height }}>
+      <div className={`${styles.railWrapper} ${styles.railWrapperStatic}`}>
         <div className={styles.centerBand} />
         <div className={`${styles.rail} ${styles.railStatic}`} style={stripStyle}>
           {items.map((y, i) => {

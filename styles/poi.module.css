@@ -9,9 +9,9 @@
 /* Selected ring spins */
 .rotating {
   transform-origin: center;
-  animation: poiDashSpin 2.2s linear infinite;
+  animation: poiDashSpin 60s linear infinite;
 }
 
 @keyframes poiDashSpin {
-  to { stroke-dashoffset: -64; }
+  to { stroke-dashoffset: 100%; }
 }

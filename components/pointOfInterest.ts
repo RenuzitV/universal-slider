@@ -33,7 +33,7 @@ export const defaultPOIs: PointOfInterest[] = [
     id: "poi3",
     date: new Date("2025-05-18"),
     title: "New Year Together",
-    description: "Ringing in the new year.",
+    description: "Ringing in the new year.\n132123\n123\n123\n123\n\n\n\n\n\n\n\n\n\n\n\n\n`231212312",
     imageURLs: ["/images/poi3.jpg"],
   },
   {

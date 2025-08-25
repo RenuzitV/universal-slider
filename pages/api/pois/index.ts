@@ -1,8 +1,8 @@
 // src/pages/api/pois/index.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { listPOIs, upsertPOI } from "../../../lib/poiStore";
-import type { CreatePOIInput } from "../../../types/poi";
 import { genId } from "../../../lib/id";
+import { defaultPOIs } from "../../../components/pointOfInterest";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "GET") {

@@ -58,14 +58,16 @@
   font-size: 0.95rem;
   opacity: 0.9;
 }
+
 .infoDesc {
   font-size: 1rem;
   line-height: 1.35;
   display: -webkit-box;
-  -webkit-line-clamp: 4;  /* clamp to a few lines */
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow-x: scroll;
+  height: 100%;
+  resize: none;
 }
+
 .infoCount {
   margin-top: auto;
   font-size: 0.95rem;

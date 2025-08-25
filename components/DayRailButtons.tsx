@@ -18,7 +18,6 @@ type Props = {
   valueKey: string;
   onChange: (key: string) => void;
   hasPOIKeys?: Set<string>;
-  height?: CSSHeight;              // ← string | number
   visibleCount?: number;
   onYearBoundary?: (deltaYear: number) => void;
   onPrevPoi?: () => void;
@@ -32,7 +31,6 @@ const DayRailButtons = forwardRef<DayRailHandle, Props>(function DayRailButtons(
     valueKey,
     onChange,
     hasPOIKeys,
-    height,                    // ← parent controls height (e.g., "100%")
     visibleCount = 9,
     onYearBoundary,
     onPrevPoi,
@@ -42,7 +40,7 @@ const DayRailButtons = forwardRef<DayRailHandle, Props>(function DayRailButtons(
   },
   ref
 ) {
-  const effectiveHeight = height ?? "100%"; // NEW
+  const effectiveHeight = "100%"; // NEW
 
   const period = DAY_KEYS.length;
   const propIndex = Math.max(0, DAY_KEYS.indexOf(valueKey));

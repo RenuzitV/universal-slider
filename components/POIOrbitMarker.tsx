@@ -33,6 +33,9 @@ export default function POIOrbitMarker({
 
   const handleDotClick = () => onSelect(selected ? null : p.id);
 
+  const maxDescLength = 30;
+  const shortenedDesc = p.description?.length > maxDescLength ? p.description.slice(0, maxDescLength) + "..." : p.description;
+
   return (
     <g
       onMouseEnter={() => setHover(true)}
@@ -41,18 +44,18 @@ export default function POIOrbitMarker({
       style={{ cursor: "pointer" }}
     >
       {/* base dot */}
-      <circle cx={pos.x} cy={pos.y} r={15} className={poi.poi} strokeWidth={3} />
+      <circle cx={pos.x} cy={pos.y} r={selected ? 40 : 25} className={poi.poi} strokeWidth={3} />
 
       {/* selected ring */}
       {selected && (
         <circle
           cx={pos.x}
           cy={pos.y}
-          r={40}
+          r={55}
           fill="none"
           stroke="rgba(230,122,255,0.95)"
-          strokeWidth={3.5}
-          strokeDasharray="2 4"
+          strokeWidth={7}
+          strokeDasharray="0.3rem, 0.6rem"
           className={poi.rotating}
         />
       )}
@@ -61,8 +64,8 @@ export default function POIOrbitMarker({
         <foreignObject
           x={pos.x}
           y={pos.y}
-          width={1}
-          height={1}
+          width={"100%"}
+          height={"100%"}
           style={{ overflow: "visible", pointerEvents: "none" }}
         >
           <div className={popup.popupContainer}>
@@ -89,7 +92,7 @@ export default function POIOrbitMarker({
                 })}
               </div>
 
-              <div className={popup.popupDesc}>{p.description}</div>
+              <div className={popup.popupDesc}>{shortenedDesc}</div>
             </div>
           </div>
         </foreignObject>

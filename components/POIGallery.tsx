@@ -74,7 +74,7 @@ export default function POIGallery({
                   timeZone: "Australia/Melbourne",
                 })}
               </div>
-              <div className={g.infoDesc} title={fullDesc}>{shortDesc}</div>
+              <textarea readOnly className={g.infoDesc} title={fullDesc}>{shortDesc}</textarea>
               {imgs.length > 0 && <div className={g.infoCount}>🖼️ +{imgs.length}</div>}
             </div>
           </div>
@@ -94,7 +94,7 @@ export default function POIGallery({
                 <div className={g.counter}>{idx + 1}/{imgs.length}</div>
               </>
             ) : (
-              <div className={g.empty}>No photos</div>
+              <div className={g.empty}>No photos.</div>
             )}
           </div>
         </div>
