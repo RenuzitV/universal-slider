@@ -3,7 +3,7 @@ export async function compressAndToBase64(
   file: File,
   opts: { maxW?: number; maxH?: number; quality?: number } = {}
 ) {
-  const { maxW = 2048, maxH = 2048, quality = 0.85 } = opts;
+  const { maxW = 2048, maxH = 2048, quality = 1 } = opts;
 
   // Create bitmap (fast) with fallback to HTMLImageElement if needed
   let bitmap: ImageBitmap | HTMLImageElement;
