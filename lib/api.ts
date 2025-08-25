@@ -27,17 +27,31 @@ export async function updatePOI(id: string, patch: UpdatePOIInput): Promise<Poin
   return r.json();
 }
 
-export async function deletePOI(id: string): Promise<void> {
-  const r = await fetch(`/api/pois/${id}`, { method: "DELETE" });
-  if (!r.ok && r.status !== 204) throw new Error("Failed to delete POI");
-}
-
-export async function uploadImageBase64(contentType: string, dataBase64: string) {
-  const r = await fetch("/api/images/upload", {
+export async function uploadImageBase64(
+  contentType: string,
+  base64: string,
+) {
+  const res = await fetch("/api/images/upload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contentType, dataBase64 }),
+    body: JSON.stringify({ contentType, data: base64 }),
   });
-  if (!r.ok) throw new Error("Failed to upload image");
-  return r.json() as Promise<{ id: string; url: string }>;
+  if (!res.ok) throw new Error(`upload failed: ${res.status}`);
+  const data = await res.json();
+
+  // accept either {id} or {id,url}
+  const id  = data.id ?? data.imageId ?? null;
+  const url = data.url ?? (id ? `/api/image/${id}` : null);
+  if (!url) throw new Error("Upload response missing id/url");
+
+  return { id, url };
+}
+
+export async function deletePOI(id: string) {
+  const res = await fetch(`/api/pois/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) throw new Error(`delete failed: ${res.status}`);
+  return { ok: true };
 }

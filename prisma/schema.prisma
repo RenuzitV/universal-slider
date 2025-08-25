@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // we'll map this from NETLIFY_DATABASE_URL in scripts
+}
+
+model POI {
+  id          String   @id @db.Text
+  title       String
+  description String   @default("")
+  momentDate  DateTime @db.Timestamptz(6) @map("moment_date")
+  createdAt   DateTime @default(now())    @map("created_at")
+  updatedAt   DateTime @updatedAt         @map("updated_at")
+
+  images      POIImage[]
+
+  @@map("pois")
+}
+
+model POIImage {
+  id          String   @id @db.Text
+  poiId       String?  @map("poi_id")
+  poi         POI?     @relation(fields: [poiId], references: [id], onDelete: Cascade)
+
+  contentType String   @map("content_type")
+  data        Bytes
+  width       Int?
+  height      Int?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([poiId], map: "poi_images_poi_id_idx")
+  @@map("poi_images")
+}

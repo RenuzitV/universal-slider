@@ -17,11 +17,12 @@ import { useIsDomReady } from "../utils/useIsDomReady";
 import { fetchPOIs } from "../lib/api";
 import POIForm from "./POIForm";
 import BodyPortal from "./BodyPortal";
+import next from "next";
 
 const MAX_COORD = 1000;
 
 // helpers
-
+const byDateAsc = (a: PointOfInterest, b: PointOfInterest) => a.date.getTime() - b.date.getTime();
 const isSameYMD = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
@@ -168,6 +169,7 @@ export default function SolarSystem() {
     dayRailRef.current?.animateToKey(k, { silent: true });
   };
 
+
   // next/prev POI relative to selected day + current cursor (tie-break on same day)
   const nextPoi = () => {
     const i = pois.findIndex(
@@ -187,6 +189,13 @@ export default function SolarSystem() {
         (p.date.getTime() === selectedDate.getTime() && poiCursor != null && pois.indexOf(p) < poiCursor)
     );
     if (i >= 0) jumpToPoi(i);
+  };
+
+  const handleDeletedPoi = (id: string) => {
+    setPois(prev => {
+      const next = prev.filter(p => p.id !== id).sort(byDateAsc);
+      return next;
+    });
   };
 
   // day rail: pending year delta (for Dec↔Jan wrap)
@@ -396,6 +405,7 @@ export default function SolarSystem() {
               open={formOpen}
               onClose={() => setFormOpen(false)}
               onSaved={onSavedPoi}
+              onDeleted={handleDeletedPoi}
               poi={editingPoi}
               initialDate={editingPoi ? undefined : selectedDate}  /* prefills create with selected day */
             />
@@ -453,3 +463,19 @@ function getMode(distances: number[], binSize: number = 1e7) {
   }
   return mode;
 }
+
+function findCursorForDate(arr: PointOfInterest[], date: Date): number | null {
+  if (!arr.length) return null;
+  let dist = 1e18;
+  let nextIdx = -1;
+  for (let i = 0; i < arr.length; i++) {
+    const d = Math.abs(arr[i].date.getTime() - date.getTime());
+    if (d === 0) return i;
+    if (d < dist) {
+      dist = d;
+      nextIdx = i;
+    }
+  }
+  return nextIdx == -1 ? null : nextIdx;
+}
+

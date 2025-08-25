@@ -1,71 +1,121 @@
-// src/lib/poiStore.ts
-import { nanoid } from "nanoid";
-import path from "path";
-import fs from "fs";
-import { defaultPOIs } from "../components/pointOfInterest";
-import type { PointOfInterestDTO, CreatePOIInput, UpdatePOIInput } from "../types/poi";
+import { sql } from "./db";
 
-let pois: PointOfInterestDTO[] =
-  defaultPOIs
-    .slice()
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .map(p => ({
-      id: p.id,
-      date: p.date.toISOString(),
-      title: p.title,
-      description: p.description,
-      imageURLs: (p as any).imageURLs ?? (p.imageURLs ? [p.imageURLs] : []),
-    }));
-
-export const listPOIs = () => pois.slice().sort((a,b)=>a.date.localeCompare(b.date));
-export const getPOI = (id: string) => pois.find(p => p.id === id) ?? null;
-export function createPOI(input: CreatePOIInput) {
-  const poi: PointOfInterestDTO = { id: nanoid(), ...input };
-  pois.push(poi); pois.sort((a,b)=>a.date.localeCompare(b.date));
-  return poi;
-}
-export function updatePOI(id: string, patch: UpdatePOIInput) {
-  const i = pois.findIndex(p => p.id === id); if (i < 0) return null;
-  pois[i] = { ...pois[i], ...patch, id }; return pois[i];
-}
-export function deletePOI(id: string) {
-  const prev = pois.length; pois = pois.filter(p => p.id !== id);
-  return pois.length < prev;
-}
-
-/* ---- image blobs (id -> Buffer) ---- */
-type ImageBlob = { contentType: string; data: Buffer };
-const imageStore = new Map<string, ImageBlob>();
-
-// mock IDs → public images
-const MOCK: Record<string, string> = {
-  "mock-01": "/images/poi1.jpg",
-  "mock-02": "/images/poi2.jpg",
-  "mock-03": "/images/poi3.jpg",
+export type POI = {
+  id: string;
+  title: string;
+  description: string;
+  date: Date;            // exposed as Date in app
+  imageURLs: string[];   // /api/image/:id
 };
 
-export function saveImageBase64(contentType: string, dataBase64: string) {
-  const id = nanoid();
-  imageStore.set(id, { contentType, data: Buffer.from(dataBase64, "base64") });
-  return id;
+const rowToPOI = (r: any): POI => ({
+  id: r.id,
+  title: r.title,
+  description: r.description,
+  date: new Date(r.moment_date),
+  imageURLs: r.image_ids?.length
+    ? r.image_ids.map((id: string) => `/api/image/${id}`)
+    : [],
+});
+
+export async function listPOIs(): Promise<POI[]> {
+  const rows = await sql/*sql*/`
+    select p.id, p.title, p.description, p.moment_date,
+           coalesce(array_agg(i.id) filter (where i.id is not null), '{}') as image_ids
+    from pois p
+    left join poi_images i on i.poi_id = p.id
+    group by p.id
+    order by p.moment_date asc, p.id asc
+  `;
+  return rows.map(rowToPOI);
 }
 
-export function readImageById(id: string): ImageBlob | null {
-  const mem = imageStore.get(id);
-  if (mem) return mem;
-  const rel = MOCK[id];
-  if (rel) {
-    const fp = path.join(process.cwd(), "public", rel);
-    if (fs.existsSync(fp)) {
-      const buf = fs.readFileSync(fp);
-      return { contentType: guess(fp), data: buf };
-    }
-  }
-  return null;
+export async function getPOI(id: string): Promise<POI | null> {
+  const rows = await sql/*sql*/`
+    select p.id, p.title, p.description, p.moment_date,
+           coalesce(array_agg(i.id) filter (where i.id is not null), '{}') as image_ids
+    from pois p
+    left join poi_images i on i.poi_id = p.id
+    where p.id = ${id}
+    group by p.id
+    limit 1
+  `;
+  return rows.length ? rowToPOI(rows[0]) : null;
 }
-function guess(fp: string) {
-  const ext = path.extname(fp).toLowerCase();
-  if (ext === ".png") return "image/png";
-  if (ext === ".webp") return "image/webp";
-  return "image/jpeg";
+
+export type UpsertPOIInput = {
+  id: string;
+  title: string;
+  description: string;
+  date: Date;
+  imageURLs: string[]; // /api/image/:id
+};
+
+export async function upsertPOI(input: UpsertPOIInput): Promise<POI> {
+  // upsert main row
+  await sql/*sql*/`
+    insert into pois (id, title, description, moment_date, created_at, updated_at)
+    values (${input.id}, ${input.title}, ${input.description}, ${input.date.toISOString()}, now(), now())
+    on conflict (id) do update
+      set title = excluded.title,
+          description = excluded.description,
+          moment_date = excluded.moment_date,
+          updated_at = now()
+  `;
+
+  // link images mentioned in payload (by parsing /api/image/:id)
+  const ids = input.imageURLs
+    .map(u => (u.match(/\/api\/image\/(.+)$/)?.[1]) || null)
+    .filter(Boolean) as string[];
+
+  if (ids.length) {
+    // associate any uploaded images to this POI
+    await sql/*sql*/`
+      update poi_images set poi_id = ${input.id}
+      where id = any(${ids})
+    `;
+  }
+
+  // (optional) detach images that were previously linked but now removed:
+  // await sql/*sql*/`
+  //   update poi_images set poi_id = null
+  //   where poi_id = ${input.id} and id != all(${ids})
+  // `;
+
+  const saved = await getPOI(input.id);
+  if (!saved) throw new Error("Failed to load saved POI");
+  return saved;
+}
+
+export async function deletePOI(id: string): Promise<void> {
+  await sql/*sql*/`delete from pois where id = ${id}`;
+}
+
+export type NewImage = {
+  id: string;                // generated on client (or server), returned to client
+  contentType: string;
+  data: Buffer | Uint8Array; // raw bytes
+  width?: number;
+  height?: number;
+};
+
+// Store raw image (standalone; poi_id can be set later on upsert)
+export async function putImage(img: NewImage): Promise<{ id: string; url: string }> {
+  await sql/*sql*/`
+    insert into poi_images (id, poi_id, content_type, data, width, height)
+    values (${img.id}, null, ${img.contentType}, ${img.data as any}, ${img.width ?? null}, ${img.height ?? null})
+    on conflict (id) do update
+      set content_type = excluded.content_type,
+          data = excluded.data,
+          width = excluded.width,
+          height = excluded.height
+  `;
+  return { id: img.id, url: `/api/image/${img.id}` };
+}
+
+export async function getImage(id: string): Promise<{ contentType: string; data: Uint8Array } | null> {
+  const rows = await sql/*sql*/`select content_type, data from poi_images where id = ${id} limit 1`;
+  if (!rows.length) return null;
+  const r = rows[0];
+  return { contentType: r.content_type, data: r.data as Uint8Array };
 }

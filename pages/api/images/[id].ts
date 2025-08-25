@@ -1,13 +1,16 @@
 // src/pages/api/images/[id].ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { readImageById } from "../../../lib/poiStore";
+import { getImage } from "../../../lib/poiStore";
 export const config = { api: { responseLimit: false } };
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { id } = req.query as { id: string };
-  const blob = readImageById(id);
-  if (!blob) return res.status(404).end();
-  res.setHeader("Content-Type", blob.contentType);
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const { id } = req.query;
+  if (typeof id !== "string") return res.status(400).end();
+
+  const img = await getImage(id);
+  if (!img) return res.status(404).end();
+
+  res.setHeader("Content-Type", img.contentType || "application/octet-stream");
   res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-  return res.status(200).send(blob.data);
+  res.send(Buffer.from(img.data));
 }

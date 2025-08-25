@@ -1,17 +1,39 @@
-// src/pages/api/images/upload.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { saveImageBase64 } from "../../../lib/poiStore";
+import { putImage } from "../../../lib/poiStore";
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).end("Method Not Allowed");
+export const config = {
+  api: { bodyParser: { sizeLimit: "16mb" } }
+};
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") return res.status(405).end();
+
+  try {
+    const { contentType, data, filename, width, height, id } = req.body || {};
+    if (!contentType || !data) return res.status(400).json({ error: "Missing contentType/data" });
+
+    // accept client id or make one
+    const imgId = id || crypto.randomUUID();
+
+    // decode base64 -> bytes
+    const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+
+    const saved = await putImage({
+      id: imgId,
+      contentType,
+      data: bytes,
+      width: typeof width === "number" ? width : undefined,
+      height: typeof height === "number" ? height : undefined,
+    });
+
+    res.status(200).json(saved); // { id, url }
+  } catch (e: any) {
+    console.error(e);
+    res.status(500).json({ error: "upload failed" });
   }
-  const { contentType, dataBase64 } = req.body as { contentType?: string; dataBase64?: string };
-  if (!contentType || !dataBase64) return res.status(400).json({ error: "contentType and dataBase64 required" });
+}
 
-  const id = saveImageBase64(contentType, dataBase64);
-  // alias path uses singular "image" as you asked:
-  const url = `/api/image/${id}`;
-  return res.status(201).json({ id, url });
+// tiny atob polyfill for Node < 16.7
+function atob(b64: string) {
+  return Buffer.from(b64, "base64").toString("binary");
 }

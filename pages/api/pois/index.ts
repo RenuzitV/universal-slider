@@ -1,23 +1,23 @@
 // src/pages/api/pois/index.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { listPOIs, createPOI } from "../../../lib/poiStore";
+import { listPOIs, upsertPOI } from "../../../lib/poiStore";
 import type { CreatePOIInput } from "../../../types/poi";
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === "GET") return res.status(200).json(listPOIs());
-
-  if (req.method === "POST") {
-    const body = req.body as CreatePOIInput;
-    if (!body?.title || !body?.date) {
-      return res.status(400).json({ error: "title and date (ISO) are required" });
-    }
-    const created = createPOI({
-      ...body,
-      imageURLs: body.imageURLs ?? [],
-    });
-    return res.status(201).json(created);
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === "GET") {
+    const pois = await listPOIs();
+    return res.status(200).json(pois);
   }
-
-  res.setHeader("Allow", "GET,POST");
-  res.status(405).end("Method Not Allowed");
+  if (req.method === "POST") {
+    const b = req.body;
+    const saved = await upsertPOI({
+      id: b.id, // client can choose id (e.g., "poi4"); else generate here.
+      title: b.title,
+      description: b.description ?? "",
+      date: new Date(b.date),
+      imageURLs: Array.isArray(b.imageURLs) ? b.imageURLs : [],
+    });
+    return res.status(200).json(saved);
+  }
+  return res.status(405).end();
 }

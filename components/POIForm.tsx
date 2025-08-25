@@ -4,19 +4,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import BodyPortal from "./BodyPortal";
 import type { PointOfInterest } from "./pointOfInterest"; // ← lowercase p
-import { createPOI, updatePOI, uploadImageBase64 } from "../lib/api";
+import { createPOI, deletePOI, updatePOI, uploadImageBase64 } from "../lib/api";
 import styles from "../styles/poi-form.module.css";
 import { compressAndToBase64 } from "../lib/imageClient";
+import { useToast } from "./ToastProvider";
 
 type Props = {
     open: boolean;
     onClose: () => void;
     onSaved: (poi: PointOfInterest) => void;
-    poi?: PointOfInterest;           // edit mode if present
-    initialDate?: Date;              // ← NEW: used in create mode
+    poi?: PointOfInterest;         // edit mode if present
+    initialDate?: Date;            // (you already added earlier)
+    onDeleted?: (id: string) => void; // ← NEW (optional)
 };
 
+const newTempId = () => {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+        return (crypto as any).randomUUID();
+    }
+    return `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+};
+
+
 type ImgEntry = {
+    tempId?: string;           // ← NEW: client-unique key
     url: string;
     status: "ready" | "uploading" | "error";
     name?: string;
@@ -30,8 +41,9 @@ const parseInputDate = (s: string) => {
     return new Date(y, (m ?? 1) - 1, d ?? 1);
 };
 
-export default function POIForm({ open, onClose, onSaved, poi, initialDate }: Props) {
+export default function POIForm({ open, onClose, onSaved, poi, initialDate, onDeleted }: Props) {
     // form state
+    const toast = useToast();
     const [title, setTitle] = useState(poi?.title ?? "");
     const [dateStr, setDateStr] = useState(
         poi ? toInputDate(poi.date)
@@ -39,8 +51,14 @@ export default function POIForm({ open, onClose, onSaved, poi, initialDate }: Pr
     );
     const [desc, setDesc] = useState(poi?.description ?? "");
     const [images, setImages] = useState<ImgEntry[]>(
-        (poi?.imageURLs ?? []).map((u) => ({ url: u, status: "ready" }))
+        (poi?.imageURLs ?? []).map((u) => ({
+            tempId: newTempId(),    // give each preloaded image a stable temp id
+            url: u,
+            status: "ready",
+        }))
     );
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     const isEdit = !!poi;
     const canSubmit = title.trim().length > 0 && dateStr.length > 0;
@@ -55,48 +73,93 @@ export default function POIForm({ open, onClose, onSaved, poi, initialDate }: Pr
         setImages((poi?.imageURLs ?? []).map(u => ({ url: u, status: "ready" })));
     }, [open, poi, initialDate]);
 
-
-
     // file input
     const fileRef = useRef<HTMLInputElement>(null);
 
+
     const onPickFiles = () => fileRef.current?.click();
 
+    const handleDelete = async () => {
+        if (!poi) return;
+        try {
+            setDeleting(true);
+            await deletePOI(poi.id);
+            // let parent remove from local list
+            if (typeof onDeleted === "function") onDeleted(poi.id);
+            toast.success("Deleted moment 🗑️");
+            onClose();
+        } catch (err) {
+            toast.error("Delete failed");
+            console.error("delete failed", err);
+        } finally {
+            setDeleting(false);
+            setShowDeleteConfirm(false);
+        }
+    };
+
     const handleFiles = async (files: FileList | null) => {
-        if (!files?.length) return;
+        if (!files || !files.length) return;
 
-        const placeholders = Array.from(files).map((f) => ({
-            url: "",
-            status: "uploading" as const,
-            name: f.name,
+        // 1) create a local list of work items with tempIds
+        const work = Array.from(files).map((file) => ({
+            file,
+            tempId: newTempId(),
         }));
-        setImages((prev) => [...prev, ...placeholders]);
 
-        for (const f of Array.from(files)) {
+        // 2) add optimistic placeholders
+        setImages((prev) => [
+            ...prev,
+            ...work.map(({ file, tempId }) => ({
+                tempId,
+                url: "",
+                status: "uploading" as const,
+                name: file.name,
+            })),
+        ]);
+
+        // 3) upload sequentially (simple & predictable). You can parallelize later.
+        for (const { file, tempId } of work) {
             try {
-                const { contentType, base64 } = await compressAndToBase64(f, {
+                const { contentType, base64 } = await compressAndToBase64(file, {
                     maxW: 2048,
                     maxH: 2048,
                     quality: 0.85,
                 });
+
                 const { url } = await uploadImageBase64(contentType, base64);
+
+                // 4) replace the specific placeholder by tempId (NOT by name)
                 setImages((prev) => {
                     const copy = [...prev];
-                    const idx = copy.findIndex((x) => x.status === "uploading" && !x.url && x.name === f.name);
-                    if (idx >= 0) copy[idx] = { url, status: "ready", name: f.name };
+                    const idx = copy.findIndex((x) => x.tempId === tempId);
+                    if (idx >= 0) copy[idx] = { ...copy[idx], url, status: "ready" };
                     return copy;
                 });
             } catch (err) {
                 console.error("upload failed", err);
                 setImages((prev) => {
                     const copy = [...prev];
-                    const idx = copy.findIndex((x) => x.status === "uploading" && !x.url && x.name === f.name);
-                    if (idx >= 0) copy[idx] = { url: "", status: "error", name: f.name };
+                    const idx = copy.findIndex((x) => x.tempId === tempId);
+                    if (idx >= 0) copy[idx] = { ...copy[idx], status: "error" };
                     return copy;
                 });
             }
         }
     };
+
+    // tiny helper to map mime → extension
+    function mimeToExt(mime: string): string | null {
+        if (!mime) return null;
+        const map: Record<string, string> = {
+            "image/jpeg": "jpg",
+            "image/jpg": "jpg",
+            "image/png": "png",
+            "image/webp": "webp",
+            "image/gif": "gif",
+            "image/avif": "avif",
+        };
+        return map[mime] || null;
+    }
 
 
     const removeImage = (idx: number) => {
@@ -111,7 +174,9 @@ export default function POIForm({ open, onClose, onSaved, poi, initialDate }: Pr
             title: title.trim(),
             date: new Date(dateStr).toISOString(),
             description: desc,
-            imageURLs: images.filter((i) => i.status === "ready" && i.url).map((i) => i.url),
+            imageURLs: images
+                .filter((i) => i.status === "ready" && i.url)
+                .map((i) => i.url),
         };
 
         try {
@@ -136,10 +201,11 @@ export default function POIForm({ open, onClose, onSaved, poi, initialDate }: Pr
                 };
                 onSaved(saved);
             }
+            toast.success(isEdit ? "Saved changes ✨" : "Created new moment ✨");
             onClose();
         } catch (err) {
             console.error("save failed", err);
-            // TODO: toast/error UI
+            toast.error(isEdit ? "Failed to save changes" : "Failed to create POI");
         }
     };
 
@@ -189,12 +255,51 @@ export default function POIForm({ open, onClose, onSaved, poi, initialDate }: Pr
                             />
                         </label>
 
-                        <div className={styles.actions}>
-                            <button type="button" className={styles.secondary} onClick={onClose}>Cancel</button>
-                            <button type="submit" className={styles.primary} disabled={!canSubmit}>
-                                {isEdit ? "Save" : "Create"}
-                            </button>
+                        <div className={styles.actionsRow}>
+                            {/* LEFT: Delete (only in edit mode) */}
+                            <div>
+                                {isEdit ? (
+                                    showDeleteConfirm ? (
+                                        <div className={styles.deleteConfirm}>
+                                            <span>Delete this moment?</span>
+                                            <button
+                                                type="button"
+                                                className={`${styles.smallBtn}`}
+                                                onClick={() => setShowDeleteConfirm(false)}
+                                                disabled={deleting}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`${styles.smallBtn} ${styles.confirmBtn}`}
+                                                onClick={handleDelete}
+                                                disabled={deleting}
+                                            >
+                                                {deleting ? "Deleting…" : "Delete"}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className={`${styles.primary} ${styles.danger}`}
+                                            onClick={() => setShowDeleteConfirm(true)}
+                                        >
+                                            Delete
+                                        </button>
+                                    )
+                                ) : null}
+                            </div>
+
+                            {/* RIGHT: Cancel / Save */}
+                            <div className={styles.actionsRight}>
+                                <button type="button" className={styles.secondary} onClick={onClose}>Cancel</button>
+                                <button type="submit" className={styles.primary} disabled={!canSubmit}>
+                                    {isEdit ? "Save" : "Create"}
+                                </button>
+                            </div>
                         </div>
+
                     </form>
 
                     {/* right square: images */}
